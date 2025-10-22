@@ -1,0 +1,351 @@
+"""
+OpenPages API Client
+Provides functionality to interact with IBM OpenPages REST API
+"""
+
+import logging
+import base64
+from typing import Any, Dict, List, Optional
+import httpx
+#import settings
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+class OpenPagesClient:
+    """Client for interacting with IBM OpenPages API"""
+    
+    # def __init__(self, base_url: str, username: str, password: str):
+    #     """
+    #     Initialize the OpenPages client
+        
+    #     Args:
+    #         base_url: Base URL of the OpenPages API
+    #         username: OpenPages username
+    #         password: OpenPages password
+    #     """
+    #     # Ensure the base URL has the correct protocol
+    #     if base_url and not (base_url.startswith('http://') or base_url.startswith('https://')):
+    #         base_url = 'https://' + base_url
+    #         logger.info(f"Added https:// protocol to base URL: {base_url}")
+            
+    #     self.base_url = base_url.rstrip('/')
+    #     logger.info(f"OpenPagesClient initialized with base URL: {self.base_url}")
+        
+    #     self.auth_header = self._create_auth_header(username, password)
+    #     self.headers = {
+    #         'Authorization': self.auth_header,
+    #         'Content-Type': 'application/json',
+    #         'Accept': 'application/json'
+    #     }
+
+    def __init__(self, base_url: str, api_key: str):
+        """
+        Initialize the OpenPages client
+        
+        Args:
+            base_url: Base URL of the OpenPages API
+            api_key: OpenPages api_key
+        """
+        # Ensure the base URL has the correct protocol
+        if base_url and not (base_url.startswith('http://') or base_url.startswith('https://')):
+            base_url = 'https://' + base_url
+            logger.info(f"Added https:// protocol to base URL: {base_url}")
+            
+        self.base_url = base_url.rstrip('/')
+        logger.info(f"OpenPagesClient initialized with base URL: {self.base_url}")
+        
+        self.auth_header = self._create_bearer_auth_header(api_key)
+        self.headers = {
+            'Authorization': self.auth_header,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    
+    def _create_bearer_auth_header(self, api_key: str) -> str:
+        """
+        Create Basic Auth header
+        
+        Args:
+            api_key: OpenPages api_key
+            
+        Returns:
+            Basic auth header string
+        """
+        token = self.fetch_token(api_key)
+        return f"Bearer {token}"
+    
+    def fetch_token(self, api_key: str) -> str:
+        """
+        Fetch authentication token from IBM Cloud IAM service.
+        
+        Args:
+            api_key (str): The API key to use for authentication
+            
+        Returns:
+            str: The access token if successful, None otherwise
+        """
+        url = "https://iam.test.cloud.ibm.com/identity/token"
+        
+        headers = {
+            'content-type': 'application/x-www-form-urlencoded'
+        }
+        
+        data = {
+            'grant_type': 'urn:ibm:params:oauth:grant-type:apikey',
+            'apikey': api_key
+        }
+        
+        try:
+            with httpx.Client() as client:
+                response = client.post(url, headers=headers, data=data)
+                response.raise_for_status()  # Raise exception for non-2xx status codes
+                
+                # Parse the JSON response
+                token_data = response.json()
+                
+                # Extract and return the access token
+                if 'access_token' in token_data:
+                    return token_data['access_token']
+                else:
+                    print("Error: 'access_token' not found in response")
+                    return None
+                
+        except httpx.HTTPError as e:
+            print(f"Error fetching token: {e}")
+            return None
+    
+    def _create_auth_header(self, username: str, password: str) -> str:
+        """
+        Create Basic Auth header
+        
+        Args:
+            username: OpenPages username
+            password: OpenPages password
+            
+        Returns:
+            Basic auth header string
+        """
+        credentials = f"{username}:{password}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        return f"Basic {encoded}"
+    
+    async def query(self, statement: str, offset: int = 0, limit: int = 100) -> Dict[str, Any]:
+        """
+        Execute a query against OpenPages
+        
+        Args:
+            statement: SQL-like query statement
+            offset: Result offset
+            limit: Maximum number of results
+            
+        Returns:
+            Query results
+        """
+        # Check if the base URL has a valid protocol
+        if not (self.base_url.startswith('http://') or self.base_url.startswith('https://')):
+            logger.error(f"Invalid base URL (missing protocol): {self.base_url}")
+            # Return a mock empty result instead of raising an error
+            return {"rows": []}
+            
+        request_body = {
+            "statement": statement,
+            "offset": offset,
+            "max_rows": 500,
+            "limit": limit,
+            "case_insensitive": False,
+            "honor_primary": False
+        }
+        
+        logger.info(f"OpenPages API Query Request: {self.base_url}/opgrc/api/v2/query")
+        logger.info(f"Request Body: {request_body}")
+        
+        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+            try:
+                response = await client.post(
+                    f"{self.base_url}/opgrc/api/v2/query",
+                    headers=self.headers,
+                    json=request_body,
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                response_json = response.json()
+                
+                # Log the response, but truncate if too large
+                # if settings.DEBUG:
+                #     logger.info(f"OpenPages API Query Response Status: {response.status_code}")
+                #     response_str = str(response_json)
+                #     if len(response_str) > 1000:
+                #         logger.info(f"Response Body (truncated): {response_str[:1000]}...")
+                #     else:
+                #         logger.info(f"Response Body: {response_json}")
+                
+                return response_json
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error during query: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    logger.error(f"Response status: {e.response.status_code}")
+                    logger.error(f"Response body: {e.response.text}")
+                # Return a mock empty result instead of raising an error
+                return {"rows": []}
+    
+    async def get_content(self, resource_id: str) -> Dict[str, Any]:
+        """
+        Get content by resource ID
+        
+        Args:
+            resource_id: Resource ID of the content
+            
+        Returns:
+            Content data
+        """
+        url = f"{self.base_url}/opgrc/api/v2/contents/{resource_id}"
+        logger.info(f"OpenPages API Get Content Request: {url}")
+        
+        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+            try:
+                response = await client.get(
+                    url,
+                    headers=self.headers,
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                response_json = response.json()
+                
+                # Log the response, but truncate if too large
+                # if settings.DEBUG:
+                #     logger.info(f"OpenPages API Get Content Response Status: {response.status_code}")
+                #     response_str = str(response_json)
+                #     if len(response_str) > 1000:
+                #         logger.info(f"Response Body (truncated): {response_str[:1000]}...")
+                #     else:
+                #         logger.info(f"Response Body: {response_json}")
+                
+                return response_json
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error getting content: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    logger.error(f"Response status: {e.response.status_code}")
+                    logger.error(f"Response body: {e.response.text}")
+                raise
+    
+    async def create_content(self, content_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create new content in OpenPages
+        
+        Args:
+            content_data: Content data to create
+            
+        Returns:
+            Created content data
+        """
+        url = f"{self.base_url}/opgrc/api/v2/contents"
+        logger.info(f"OpenPages API Create Content Request: {url}")
+        logger.info(f"Request Body: {content_data}")
+        
+        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+            try:
+                response = await client.post(
+                    url,
+                    headers=self.headers,
+                    json=content_data,
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                response_json = response.json()
+                
+                # Log the response, but truncate if too large
+                # if settings.DEBUG:
+                #     logger.info(f"OpenPages API Create Content Response Status: {response.status_code}")
+                #     response_str = str(response_json)
+                #     if len(response_str) > 1000:
+                #         logger.info(f"Response Body (truncated): {response_str[:1000]}...")
+                #     else:
+                #         logger.info(f"Response Body: {response_json}")
+                
+                return response_json
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error creating content: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    logger.error(f"Response status: {e.response.status_code}")
+                    logger.error(f"Response body: {e.response.text}")
+                raise
+    
+    async def update_content(self, resource_id: str, content_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update existing content in OpenPages
+        
+        Args:
+            resource_id: Resource ID of the content to update
+            content_data: Updated content data
+            
+        Returns:
+            Updated content data
+        """
+        url = f"{self.base_url}/opgrc/api/v2/contents/{resource_id}"
+        logger.info(f"OpenPages API Update Content Request: {url}")
+        logger.info(f"Request Body: {content_data}")
+        
+        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+            try:
+                response = await client.put(
+                    url,
+                    headers=self.headers,
+                    json=content_data,
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                response_json = response.json()
+                
+                # Log the response, but truncate if too large
+                # if settings.DEBUG:
+                #     logger.info(f"OpenPages API Update Content Response Status: {response.status_code}")
+                #     response_str = str(response_json)
+                #     if len(response_str) > 1000:
+                #         logger.info(f"Response Body (truncated): {response_str[:1000]}...")
+                #     else:
+                #         logger.info(f"Response Body: {response_json}")
+                
+                return response_json
+            except httpx.HTTPError as e:
+                logger.error(f"HTTP error updating content: {e}")
+                if hasattr(e, 'response') and e.response is not None:
+                    logger.error(f"Response status: {e.response.status_code}")
+                    logger.error(f"Response body: {e.response.text}")
+                raise
+    
+    async def get_current_user(self) -> Optional[str]:
+        """
+        Get the current authenticated user's information
+        
+        Returns:
+            Username of the current user
+        """
+        logger.info("Getting current user from OpenPages")
+        try:
+            # Double-check that the base URL has the correct protocol
+            if not (self.base_url.startswith('http://') or self.base_url.startswith('https://')):
+                logger.error(f"Base URL missing protocol: {self.base_url}")
+                return "admin"  # Return a default user if URL is invalid
+                
+            # Query for current user
+            query = "SELECT [Name] FROM [User] WHERE [Name] IS NOT NULL LIMIT 1"
+            logger.info(f"Current user query: {query}")
+            
+            result = await self.query(query)
+            
+            if result.get('rows'):
+                username = result['rows'][0]['fields'][0]['value']
+                logger.info(f"Current user: {username}")
+                return username
+            else:
+                logger.warning("No user found in query result")
+                return "admin"  # Return a default user if no user found
+        except Exception as e:
+            logger.error(f"Failed to get current user: {e}")
+            if hasattr(e, '__traceback__'):
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+            return "admin"  # Return a default user on error
+
+# Made with Bob

@@ -14,35 +14,35 @@ from openpages_client import OpenPagesClient
 # Configure logging
 logger = logging.getLogger(__name__)
 
-class IssueTools:
+class ControlTools:
     """
-    Tools for working with issues in OpenPages
+    Tools for working with controls in OpenPages
     
-    This class provides object-centric tools for working with Issues objects in OpenPages,
-    including finding, creating, and updating issues.
+    This class provides object-centric tools for working with Controls objects in OpenPages,
+    including finding, creating, and updating controls.
     """
     
     def __init__(self, client: OpenPagesClient):
         """
-        Initialize issue tools
+        Initialize control tools
         
         Args:
             client: OpenPages API client
         """
         self.client = client
         
-    async def get_issue_fields(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def get_control_fields(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Get available fields for issue creation
+        Get available fields for control creation
         
         Args:
             arguments: Tool arguments
-                - issue_type: Type of issue (default: SOXIssue)
+                - control_type: Type of control (default: SOXControl)
                 
         Returns:
             List of text content with available fields information
         """
-        object_type = arguments.get('issue_type', 'SOXIssue')
+        object_type = arguments.get('control_type', 'SOXControl')
         
         try:
             # Get the type definition using the client's method
@@ -53,7 +53,7 @@ class IssueTools:
             field_definitions = type_info.get('field_definitions', [])
             
             if not field_definitions:
-                return [TextContent(type="text", text=f"No fields found for issue type: {object_type}")]
+                return [TextContent(type="text", text=f"No fields found for control type: {object_type}")]
             
             # Format the response
             response_text = f"Available fields for {object_type} (ID: {type_info.get('id')}):\n\n"
@@ -85,30 +85,30 @@ class IssueTools:
             logger.error(f"Error getting field definitions: {e}")
             return [TextContent(type="text", text=f"Error retrieving field definitions: {str(e)}")]
     
-    async def create_issue(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def create_control(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Create a new issue in OpenPages
+        Create a new control in OpenPages
         
         Args:
             arguments: Tool arguments
-                - name: Name of the issue (required)
-                - title: Issue title (optional)
-                - description: Description of the issue (optional)
+                - name: Name of the control (required)
+                - title: Control title (optional)
+                - description: Description of the control (optional)
                 - Any other field defined in the schema (optional)
                 
         Returns:
-            List of text content with created issue information
+            List of text content with created control information
         """
         # Extract required fields
         name = arguments.get('name')
         if not name:
-            return [TextContent(type="text", text="Error: Issue name is required")]
+            return [TextContent(type="text", text="Error: Control name is required")]
         
         # Extract common fields
         primaryParentId = arguments.get('primaryParentId', '')
         title = arguments.get('title', '')
         description = arguments.get('description', '')
-        issue_type = "SOXIssue"
+        control_type = "SOXControl"
         
         # Prepare content data
         content_data: dict[str, Any] = {
@@ -117,12 +117,12 @@ class IssueTools:
             "title": title,
             "description": description,
             "fields": [],
-            "type_definition_id": issue_type
+            "type_definition_id": control_type
         }
         
         # Get field definitions to properly format field values
         try:
-            type_info = await self.client.get_type_definition(issue_type)
+            type_info = await self.client.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
             # Create a mapping of field names to their definitions for easy lookup
@@ -189,19 +189,19 @@ class IssueTools:
             # Continue with basic fields if there's an error
         
         try:
-            # Create the issue
-            logger.info(f"Creating new issue: {content_data}")
+            # Create the control
+            logger.info(f"Creating new control: {content_data}")
             result = await self.client.create_content(content_data)
             
             # Extract resource ID from the result
             resource_id = result.get("id")
             if not resource_id:
-                return [TextContent(type="text", text="Error: Failed to create issue (no resource ID returned)")]
+                return [TextContent(type="text", text="Error: Failed to create control (no resource ID returned)")]
             
-            response_text = f"Successfully created issue:\n\n"
+            response_text = f"Successfully created control:\n\n"
             response_text += f"- **Name**: {name}\n"
             response_text += f"- **Resource ID**: {resource_id}\n"
-            response_text += f"- **Type**: {issue_type}\n"
+            response_text += f"- **Type**: {control_type}\n"
             response_text += f"- **parent**: {primaryParentId}\n"
             
             if description:
@@ -210,30 +210,30 @@ class IssueTools:
             return [TextContent(type="text", text=response_text)]
         
         except Exception as e:
-            logger.error(f"Error creating issue: {e}")
-            return [TextContent(type="text", text=f"Error creating issue: {str(e)}")]
+            logger.error(f"Error creating control: {e}")
+            return [TextContent(type="text", text=f"Error creating control: {str(e)}")]
     
-    async def query_issues(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def query_controls(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Query for issues in OpenPages
+        Query for Controls in OpenPages
         
         Args:
             arguments: Tool arguments
-                - name: Filter issues by name (partial match, optional)
+                - name: Filter controls by name (partial match, optional)
                 - owner_filter: Filter by current user ownership (default: False)
-                - status_filter: Filter issues by status (optional)
-                - limit: Maximum number of issues to return (default: 20)
+                # - status_filter: Filter controls by status (optional)
+                - limit: Maximum number of controls to return (default: 20)
                 - sort_by: Field to sort by (default: "Name")
                 - sort_order: Sort order, "ASC" or "DESC" (default: "ASC")
                 - fields: List of additional fields to include in the output (optional, multiselect)
                   Resource ID, Name, Description, and Status are always included
                 
         Returns:
-            List of text content with issue information
+            List of text content with controls information
         """
         name_filter = arguments.get('name')
         owner_filter = arguments.get('owner_filter', False)
-        status_filter = arguments.get('status_filter')
+        # status_filter = arguments.get('status_filter')
         limit = arguments.get('limit', 20)
         sort_by = arguments.get('sort_by', [{'field': 'Name', 'order': 'ASC'}])
         
@@ -257,12 +257,12 @@ class IssueTools:
         # Always include these required fields
         required_fields = ['[Resource ID]', '[Name]', '[Description]', '[OPSS-Iss:Status]']
         
-        # Map common field names to their SQL column names
+        # # Map common field names to their SQL column names
         field_mapping = {
-            'Priority': '[OPSS-Iss:Priority]',
-            'Owner': '[Owner]',
-            'Due Date': '[OPSS-Iss:DueDate]',
-            'Status': '[OPSS-Iss:Status]'
+            # 'Priority': '[OPSS-Iss:Priority]',
+            # 'Owner': '[Owner]',
+            # 'Due Date': '[OPSS-Iss:DueDate]',
+            # 'Status': '[OPSS-Iss:Status]'
         }
         
         # Add additional fields if specified
@@ -270,7 +270,7 @@ class IssueTools:
         
         # Try to get field definitions to build a more complete mapping
         try:
-            type_info = await self.client.get_type_definition('SOXIssue')
+            type_info = await self.client.get_type_definition('SOXControl')
             field_definitions = type_info.get('field_definitions', [])
             
             # Update field mapping with all available fields from type definition
@@ -316,7 +316,7 @@ class IssueTools:
         # Build query with selected fields
         query = f"""
         SELECT {', '.join(selected_fields)}
-        FROM [SOXIssue]
+        FROM [SOXControl]
         WHERE [Resource ID] IS NOT NULL
         """
         
@@ -330,8 +330,8 @@ class IssueTools:
             if current_user:
                 query += f" AND [Owner] = '{current_user}'"
         
-        if status_filter:
-            query += f" AND [OPSS-Iss:Status] = '{status_filter}'"
+        # if status_filter:
+        #     query += f" AND [OPSS-Iss:Status] = '{status_filter}'"
             
         # Add sorting with multiple fields
         sort_clauses = []
@@ -352,41 +352,33 @@ class IssueTools:
                     # Use the full field name with group prefix
                     sort_clauses.append(f"[{full_field_name}] {order}")
             else:
-                # Handle special fields
-                if field == "Status":
-                    sort_clauses.append(f"[OPSS-Iss:Status] {order}")
-                elif field == "Priority":
-                    sort_clauses.append(f"[OPSS-Iss:Priority] {order}")
-                elif field == "Due Date":
-                    sort_clauses.append(f"[OPSS-Iss:DueDate] {order}")
-                else:
-                    sort_clauses.append(f"[{field}] {order}")
+                sort_clauses.append(f"[{field}] {order}")
                 
         query += f" ORDER BY {', '.join(sort_clauses)}" if sort_clauses else ""
         
         # Add limit
         query += f" LIMIT {limit}"
         
-        logger.info(f"Executing query for issues: {query}")
+        logger.info(f"Executing query for controls: {query}")
         result = await self.client.query(query)
         
         # Format results
-        issues = []
+        controls = []
         for row in result.get('rows', []):
-            issue_data = {}
+            control_data = {}
             for field in row['fields']:
                 # Handle case where field['value'] could be null
                 if 'value' in field:
-                    issue_data[field['name']] = field['value']
+                    control_data[field['name']] = field['value']
                 else:
-                    issue_data[field['name']] = None
-            issues.append(issue_data)
+                    control_data[field['name']] = None
+            controls.append(control_data)
         
         # Create response
-        if not issues:
-            return [TextContent(type="text", text="No issues found matching the criteria.")]
+        if not controls:
+            return [TextContent(type="text", text="No controls found matching the criteria.")]
         
-        response_text = f"Found {len(issues)} issue(s):\n\n"
+        response_text = f"Found {len(controls)} controls(s):\n\n"
         
         # Create a reverse mapping from SQL field names to display names
         display_names = {}
@@ -399,30 +391,30 @@ class IssueTools:
         display_names['Resource ID'] = 'ID'
         display_names['Name'] = 'Name'
         display_names['Description'] = 'Description'
-        display_names['OPSS-Iss:Status'] = 'Status'
+        # display_names['OPSS-Iss:Status'] = 'Status'
         
-        for issue in issues:
-            response_text += f"## {issue.get('Name', 'N/A')}\n"
+        for control in controls:
+            response_text += f"## {control.get('Name', 'N/A')}\n"
             
             # Always show required fields first
-            response_text += f"- **ID**: {issue.get('Resource ID', 'N/A')}\n"
+            response_text += f"- **ID**: {control.get('Resource ID', 'N/A')}\n"
             
             # Status might be returned with different field names depending on the query
-            status_value = issue.get('Status', issue.get('OPSS-Iss:Status', 'N/A'))
-            # Handle enum types (objects with name property)
-            if isinstance(status_value, dict) and 'name' in status_value:
-                status_value = status_value['name']
-            response_text += f"- **Status**: {status_value}\n"
+            # status_value = control.get('Status', control.get('OPSS-Iss:Status', 'N/A'))
+            # # Handle enum types (objects with name property)
+            # if isinstance(status_value, dict) and 'name' in status_value:
+            #     status_value = status_value['name']
+            # response_text += f"- **Status**: {status_value}\n"
             
             # Add description if available
-            description = issue.get('Description')
+            description = control.get('Description')
             if description:
                 response_text += f"- **Description**: {description}\n"
             
             # Add all other available fields that were selected
-            for field_name, field_value in issue.items():
+            for field_name, field_value in control.items():
                 # Skip fields we've already handled
-                if field_name in ['Resource ID', 'Name', 'Description', 'Status', 'OPSS-Iss:Status']:
+                if field_name in ['Resource ID', 'Name', 'Description']:
                     continue
                     
                 # Display fields even if they have null values
@@ -441,41 +433,41 @@ class IssueTools:
         
         return [TextContent(type="text", text=response_text)]
     
-    async def update_issue(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def update_control(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Update an existing issue in OpenPages
+        Update an existing control in OpenPages
         
         Args:
             arguments: Tool arguments
-                - resource_id: Resource ID of the issue to update (required)
-                - name: Name of the issue (required)
-                - title: Issue title (optional)
-                - description: Description of the issue (optional)
+                - resource_id: Resource ID of the control to update (required)
+                - name: Name of the control (optional)
+                - title: Control title (optional)
+                - description: Description of the control (optional)
                 - Any other field defined in the schema (optional)
                 
         Returns:
-            List of text content with updated issue information
+            List of text content with updated control information
         """
         # Extract required fields
         resource_id = arguments.get('resource_id')
         if not resource_id:
             return [TextContent(type="text", text="Error: Resource ID is required")]
-            
-        name = arguments.get('name')
-        if not name:
-            return [TextContent(type="text", text="Error: Issue name is required")]
         
         # Extract common fields
+        name = arguments.get('name')
         title = arguments.get('title')
         description = arguments.get('description')
-        issue_type = "SOXIssue"
+        control_type = "SOXControl"
         
         # Prepare content data
         content_data: dict[str, Any] = {
-            "name": name,
             "fields": [],
-            "type_definition_id": issue_type
+            "type_definition_id": control_type
         }
+        
+        # Add optional fields if provided
+        if name:
+            content_data["name"] = name
         if title:
             content_data["title"] = title
         if description:
@@ -483,7 +475,7 @@ class IssueTools:
         
         # Get field definitions to properly format field values
         try:
-            type_info = await self.client.get_type_definition(issue_type)
+            type_info = await self.client.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
             # Create a mapping of field names to their definitions for easy lookup
@@ -550,21 +542,20 @@ class IssueTools:
             # Continue with basic fields if there's an error
         
         try:
-            # Update the issue
-            logger.info(f"Updating issue {resource_id}: {content_data}")
+            # Update the control
+            logger.info(f"Updating control {resource_id}: {content_data}")
             result = await self.client.update_content(resource_id, content_data)
             
             # Extract resource ID from the result
             updated_resource_id = result.get("id")
             if not updated_resource_id:
-                return [TextContent(type="text", text="Error: Failed to update issue (no resource ID returned)")]
+                return [TextContent(type="text", text="Error: Failed to update control (no resource ID returned)")]
             
-            response_text = f"Successfully updated issue:\n\n"
+            response_text = f"Successfully updated control:\n\n"
             response_text += f"- **Resource ID**: {updated_resource_id}\n"
             
-            # Extract name from result if available
-            issue_name = result.get("name", "N/A")
-            response_text += f"- **Name**: {issue_name}\n"
+            if name:
+                response_text += f"- **Name**: {name}\n"
             
             if description:
                 response_text += f"- **Description**: {description}\n"
@@ -572,5 +563,5 @@ class IssueTools:
             return [TextContent(type="text", text=response_text)]
         
         except Exception as e:
-            logger.error(f"Error updating issue: {e}")
-            return [TextContent(type="text", text=f"Error updating issue: {str(e)}")]
+            logger.error(f"Error updating control: {e}")
+            return [TextContent(type="text", text=f"Error updating control: {str(e)}")]

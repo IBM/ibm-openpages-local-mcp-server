@@ -2,6 +2,7 @@ from mcp.server.fastmcp import FastMCP  # Import FastMCP to create MCP server
 import math  # Import Python's math module for factorial calculation
 import sys
 from issue_tools import IssueTools
+from control_tools import ControlTools
 from mcp.types import TextContent
 from typing import Dict, Any, List
 from openpages_client import OpenPagesClient
@@ -153,14 +154,14 @@ class LocalMCPServer:
             settings.OPENPAGES_AUTHENTICATION_TYPE,
             settings.OPENPAGES_USERNAME,
             settings.OPENPAGES_PASSWORD,
-            settings.OPENPAGES_APIKEY
+            settings.OPENPAGES_APIKEY,
+            settings.OPENPAGES_AUTHENTICATION_URL
         )
         
         # Initialize tool modules
         #self.risk_tools = RiskTools(self.client)
-        #self.control_tools = ControlTools(self.client)
         self.issue_tools = IssueTools(self.client)
-        #self.model_tools = ModelTools(self.client)
+        self.control_tools = ControlTools(self.client)
         #self.query_tools = QueryTools(self.client)
         
         # Cache for type definitions
@@ -225,107 +226,6 @@ class LocalMCPServer:
                 }
             },
             {
-                "name": "get_model_fields",
-                "description": "Get available fields for model creation",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "model_type": {
-                            "type": "string",
-                            "description": "Type of model (default: Model)"
-                        }
-                    }
-                }
-            },
-            {
-                "name": "create_model",
-                "description": "Create a new model in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Name of the model (required)"
-                        },
-                        "title": {
-                            "type": "string",
-                            "description": "Title of the model"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "Description of the model"
-                        }
-                    },
-                    "required": ["name"]
-                }
-            },
-            {
-                "name": "query_models",
-                "description": "Query for models in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Filter models by name (partial match, optional)"
-                        },
-                        "owner_filter": {
-                            "type": "boolean",
-                            "description": "Filter by current user ownership (default: False)"
-                        },
-                        "status_filter": {
-                            "type": "string",
-                            "description": "Filter models by status (optional)"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of models to return (default: 20)"
-                        },
-                        "sort_by": {
-                            "type": "string",
-                            "description": "Field to sort by (default: 'Name')"
-                        },
-                        "sort_order": {
-                            "type": "string",
-                            "description": "Sort order, 'ASC' or 'DESC' (default: 'ASC')"
-                        },
-                        "fields": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            },
-                            "description": "List of additional fields to include in the output (multiselect). Resource ID, Name, Description, and Status are always included."
-                        }
-                    }
-                }
-            },
-            {
-                "name": "update_model",
-                "description": "Update an existing model in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "resource_id": {
-                            "type": "string",
-                            "description": "Resource ID of the model to update (required)"
-                        },
-                        "name": {
-                            "type": "string",
-                            "description": "Updated name of the model"
-                        },
-                        "title": {
-                            "type": "string",
-                            "description": "Updated title of the model"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "Updated description of the model"
-                        }
-                    },
-                    "required": ["resource_id"]
-                }
-            },
-            {
                 "name": "create_control",
                 "description": "Create a new control in OpenPages",
                 "inputSchema": {
@@ -334,30 +234,6 @@ class LocalMCPServer:
                         "name": {
                             "type": "string",
                             "description": "Name of the control (required)"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "Description of the control"
-                        },
-                        "control_type": {
-                            "type": "string",
-                            "description": "Type of control object (default: SOXControl)"
-                        },
-                        "control_frequency": {
-                            "type": "string",
-                            "description": "Frequency of control execution (Daily, Weekly, Monthly, Quarterly, Annual)"
-                        },
-                        "automation_status": {
-                            "type": "string",
-                            "description": "Status of automation (Automated, Candidate, Not Suitable)"
-                        },
-                        "test_plan": {
-                            "type": "string",
-                            "description": "Control test plan"
-                        },
-                        "additional_fields": {
-                            "type": "string",
-                            "description": "JSON string with additional fields"
                         }
                     },
                     "required": ["name"]
@@ -372,30 +248,6 @@ class LocalMCPServer:
                         "resource_id": {
                             "type": "string",
                             "description": "Resource ID of the control to update (required)"
-                        },
-                        "name": {
-                            "type": "string",
-                            "description": "Updated name of the control"
-                        },
-                        "description": {
-                            "type": "string",
-                            "description": "Updated description of the control"
-                        },
-                        "control_frequency": {
-                            "type": "string",
-                            "description": "Updated frequency of control execution (Daily, Weekly, Monthly, Quarterly, Annual)"
-                        },
-                        "automation_status": {
-                            "type": "string",
-                            "description": "Updated status of automation (Automated, Candidate, Not Suitable)"
-                        },
-                        "test_plan": {
-                            "type": "string",
-                            "description": "Updated control test plan"
-                        },
-                        "additional_fields": {
-                            "type": "string",
-                            "description": "JSON string with additional fields to update"
                         }
                     },
                     "required": ["resource_id"]
@@ -416,7 +268,20 @@ class LocalMCPServer:
                     "required": ["name"]
                 }
             },
-            #get_issue_fields tool removed as per user request
+            {
+                "name": "update_issue",
+                "description": "Update an existing issue in OpenPages",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "resource_id": {
+                            "type": "string",
+                            "description": "Resource ID of the issue to update (required)"
+                        }
+                    },
+                    "required": ["resource_id"]
+                }
+            },
             {
                 "name": "query_issues",
                 "description": "Query for issues in OpenPages",
@@ -488,6 +353,31 @@ class LocalMCPServer:
                     logger.info("Updated create_issue tool with dynamic schema")
                     break
             
+            # Update the update_issue tool schema
+            for tool in self.tools:
+                if tool["name"] == "update_issue":
+                    # Start with a copy of the issue schema
+                    update_schema = {
+                        "type": "object",
+                        "properties": {},
+                        "required": ["resource_id", "name"]
+                    }
+                    
+                    # Add resource_id field
+                    update_schema["properties"]["resource_id"] = {
+                        "type": "string",
+                        "description": "Resource ID of the issue to update (required)"
+                    }
+                    
+                    # Copy all properties from issue_schema including 'name'
+                    for prop_name, prop_def in issue_schema.get("properties", {}).items():
+                        update_schema["properties"][prop_name] = prop_def
+                    
+                    # Set the updated schema
+                    tool["inputSchema"] = update_schema
+                    logger.info("Updated update_issue tool with dynamic schema (including name as required)")
+                    break
+
             # Get dynamic schema for query_issues
             query_issues_tool = await self.update_query_issues_schema()
             
@@ -497,27 +387,50 @@ class LocalMCPServer:
                     tool["inputSchema"] = query_issues_tool["inputSchema"]
                     logger.info("Updated query_issues tool with dynamic schema")
                     break
-            
-            # Get dynamic schema for create_model
-            model_schema = await self.build_dynamic_schema_for_object("Model", "model")
-            
-            # Update the create_model tool schema
-            for tool in self.tools:
-                if tool["name"] == "create_model":
-                    tool["inputSchema"] = model_schema
-                    logger.info("Updated create_model tool with dynamic schema")
-                    break
-            
-            # Get dynamic schema for query_models
-            query_models_tool = await self.update_query_models_schema()
-            
-            # Update the query_models tool schema
-            for tool in self.tools:
-                if tool["name"] == "query_models":
-                    tool["inputSchema"] = query_models_tool["inputSchema"]
-                    logger.info("Updated query_models tool with dynamic schema")
-                    break
                     
+            # Get dynamic schema for create_control
+            control_schema = await self.build_dynamic_schema_for_object("SOXControl", "control")
+            # Update the create_control tool schema
+            for tool in self.tools:
+                if tool["name"] == "create_control":
+                    tool["inputSchema"] = control_schema
+                    logger.info("Updated create_control tool with dynamic schema")
+                    break
+            
+            # Update the update_control tool schema
+            for tool in self.tools:
+                if tool["name"] == "update_control":
+                    # Start with a copy of the control schema
+                    update_schema = {
+                        "type": "object",
+                        "properties": {},
+                        "required": ["resource_id", "name"]
+                    }
+                    
+                    # Add resource_id field
+                    update_schema["properties"]["resource_id"] = {
+                        "type": "string",
+                        "description": "Resource ID of the control to update (required)"
+                    }
+                    
+                    # Copy all properties from control_schema including 'name'
+                    for prop_name, prop_def in control_schema.get("properties", {}).items():
+                        update_schema["properties"][prop_name] = prop_def
+                    
+                    # Set the updated schema
+                    tool["inputSchema"] = update_schema
+                    logger.info("Updated update_control tool with dynamic schema (including name as required)")
+                    break
+
+            # Get dynamic schema for query_controls
+            query_controls_tool = await self.update_query_controls_schema()
+            
+            # Update the query_controls tool schema
+            for tool in self.tools:
+                if tool["name"] == "query_controls":
+                    tool["inputSchema"] = query_controls_tool["inputSchema"]
+                    logger.info("Updated query_controls tool with dynamic schema")
+                    break
             self.dynamic_schemas_loaded = True
         except Exception as e:
             logger.error(f"Error loading dynamic schemas: {e}")
@@ -900,35 +813,35 @@ class LocalMCPServer:
                 }
             }
             
-    async def update_query_models_schema(self):
+    async def update_query_controls_schema(self):
         """
-        Update the query_models tool schema with dynamic field options
+        Update the query_controls tool schema with dynamic field options
         
         Returns:
             Updated tool definition
         """
         try:
-            # Get dynamic schema for query_models
-            model_schema = await self.build_dynamic_schema_for_query_object("Model")
+            # Get dynamic schema for query_issues
+            control_schema = await self.build_dynamic_schema_for_query_object("SOXControl")
             
             # Return the updated tool definition
             return {
-                "name": "query_models",
-                "description": "Query for models in OpenPages",
-                "inputSchema": model_schema
+                "name": "query_controls",
+                "description": "Query for controls in OpenPages",
+                "inputSchema": control_schema
             }
         except Exception as e:
-            logger.error(f"Error updating query_models schema: {e}")
+            logger.error(f"Error updating query_controls schema: {e}")
             # Return default schema if there's an error
             return {
-                "name": "query_models",
-                "description": "Query for models in OpenPages",
+                "name": "query_controls",
+                "description": "Query for controls in OpenPages",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
                         "name": {
                             "type": "string",
-                            "description": "Filter models by name (partial match, optional)"
+                            "description": "Filter issues by name (partial match, optional)"
                         },
                         "owner_filter": {
                             "type": "boolean",
@@ -936,11 +849,11 @@ class LocalMCPServer:
                         },
                         "status_filter": {
                             "type": "string",
-                            "description": "Filter models by status (optional)"
+                            "description": "Filter controls by status (optional)"
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Maximum number of models to return (default: 20)"
+                            "description": "Maximum number of issues to return (default: 20)"
                         },
                         "sort_by": {
                             "type": "string",
@@ -1033,36 +946,6 @@ class LocalMCPServer:
                         {"type": "text", "text": f"Echo: {text}"}
                     ]
                 }
-            # elif name == "query_recent_risks":
-            #     # Use the actual risk_tools implementation
-            #     result = await self.risk_tools.query_recent_risks(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "find_ineffective_controls":
-            #     # Use the actual control_tools implementation
-            #     result = await self.control_tools.find_ineffective_controls(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "find_automatable_controls":
-            #     # Use the actual control_tools implementation
-            #     result = await self.control_tools.find_automatable_controls(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "create_control":
-            #     # Use the actual control_tools implementation
-            #     result = await self.control_tools.create_control(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "update_control":
-            #     # Use the actual control_tools implementation
-            #     result = await self.control_tools.update_control(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
             elif name == "create_issue":
                 # Use the actual issue_tools implementation
                 result = await self.issue_tools.create_issue(arguments)
@@ -1073,43 +956,34 @@ class LocalMCPServer:
                 return {
                     "result": [{"type": "text", "text": response_text}]
                 }
-            # get_issue_fields tool removed as per user request
             elif name == "query_issues":
                 # Use the actual issue_tools implementation
                 result = await self.issue_tools.query_issues(arguments)
                 return {
                     "result": [{"type": "text", "text": item.text} for item in result]
                 }
-            # elif name == "get_model_fields":
-            #     # Use the model_tools implementation
-            #     result = await self.model_tools.get_model_fields(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "create_model":
-            #     # Use the model_tools implementation
-            #     result = await self.model_tools.create_model(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "query_models":
-            #     # Use the model_tools implementation
-            #     result = await self.model_tools.query_models(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "update_model":
-            #     # Use the model_tools implementation
-            #     result = await self.model_tools.update_model(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
-            # elif name == "custom_query":
-            #     # Use the actual query_tools implementation
-            #     result = await self.query_tools.custom_query(arguments)
-            #     return {
-            #         "result": [{"type": "text", "text": item.text} for item in result]
-            #     }
+            elif name == "update_issue":
+                # Use the actual issue_tools implementation
+                result = await self.issue_tools.update_issue(arguments)
+                return {
+                    "result": [{"type": "text", "text": item.text} for item in result]
+                }
+            elif name == "create_control":
+                # Use the actual control_tools implementation
+                result = await self.control_tools.create_control(arguments)
+                # Format the response exactly as requested
+                response_text = ""
+                for item in result:
+                    response_text = item.text
+                return {
+                    "result": [{"type": "text", "text": response_text}]
+                }
+            elif name == "update_control":
+                # Use the actual control_tools implementation
+                result = await self.control_tools.update_control(arguments)
+                return {
+                    "result": [{"type": "text", "text": item.text} for item in result]
+                }
             else:
                 return {
                     "result": [

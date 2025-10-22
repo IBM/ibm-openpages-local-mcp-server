@@ -16,7 +16,7 @@ class OpenPagesClient:
     """Client for interacting with IBM OpenPages API"""
     
     def __init__(self, base_url: str, auth_type: str = "basic", username: Optional[str] = None,
-                 password: Optional[str] = None, api_key: Optional[str] = None):
+                 password: Optional[str] = None, api_key: Optional[str] = None, authentication_url: Optional[str] = None):
         """
         Initialize the OpenPages client
         
@@ -26,6 +26,7 @@ class OpenPagesClient:
             username: OpenPages username (required if auth_type is "basic")
             password: OpenPages password (required if auth_type is "basic")
             api_key: API key for bearer authentication (required if auth_type is "bearer")
+            authentication_url: Authentication URL for bearer authentication (required if auth_type is "bearer")
         """
         # Validate authentication parameters
         if auth_type.lower() == "basic":
@@ -34,6 +35,8 @@ class OpenPagesClient:
         elif auth_type.lower() == "bearer":
             if not api_key:
                 raise ValueError("API key is required for bearer authentication")
+            if not authentication_url:
+                raise ValueError("Authentication Url is required for bearer authentication")
         else:
             raise ValueError("Authentication type must be either 'basic' or 'bearer'")
             
@@ -50,6 +53,7 @@ class OpenPagesClient:
         self.username = username
         self.password = password
         self.api_key = api_key
+        self.authentication_url = authentication_url
         
         # Set initial headers without Authorization
         self.headers = {
@@ -80,35 +84,39 @@ class OpenPagesClient:
         encoded = base64.b64encode(credentials.encode()).decode()
         return f"Basic {encoded}"
         
-    async def _create_bearer_auth_header(self, api_key: Optional[str]) -> str:
+    async def _create_bearer_auth_header(self, api_key: Optional[str], authentication_url: Optional[str]) -> str:
         """
         Create Bearer Auth header by fetching a token from IBM Cloud IAM
         
         Args:
             api_key: API key for bearer authentication
-            
+            authentication_url: URL to use for authentication
+
         Returns:
             Bearer auth header string
         """
         if api_key is None:
             raise ValueError("API key cannot be None for bearer authentication")
 
-        token = await self.fetch_token(api_key)
+        if authentication_url is None:
+            raise ValueError("Authentication Url cannot be None for bearer authentication")
+
+        token = await self.fetch_token(api_key, authentication_url)
         if token is None:
             raise ValueError("Failed to obtain token from IAM service")
         return f"Bearer {token}"
     
-    async def fetch_token(self, api_key: str) -> Optional[str]:
+    async def fetch_token(self, api_key: str, authentication_url: str) -> Optional[str]:
         """
         Fetch authentication token from IBM Cloud IAM service.
         
         Args:
             api_key (str): The API key to use for authentication
-            
+            authentication_url (str): The URL to use for authentication
+
         Returns:
             Optional[str]: The access token if successful, None otherwise
         """
-        url = "https://iam.test.cloud.ibm.com/identity/token"
         
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -122,8 +130,8 @@ class OpenPagesClient:
         
         try:
             async with httpx.AsyncClient(verify=True) as client:
-                logger.info(f"Fetching token from {url}")
-                response = await client.post(url, headers=headers, data=data, timeout=30.0)
+                logger.info(f"Fetching token from {authentication_url}")
+                response = await client.post(authentication_url, headers=headers, data=data, timeout=30.0)
                 response.raise_for_status()  # Raise exception for non-2xx status codes
                 
                 # Parse the JSON response
@@ -152,7 +160,7 @@ class OpenPagesClient:
         """
         if self.auth_type == "bearer" and 'Authorization' not in self.headers:
             logger.info("Initializing bearer authentication")
-            self.auth_header = await self._create_bearer_auth_header(self.api_key)
+            self.auth_header = await self._create_bearer_auth_header(self.api_key, self.authentication_url)
             self.headers['Authorization'] = self.auth_header
             logger.info("Bearer authentication initialized successfully")
             

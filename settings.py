@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     OPENPAGES_USERNAME: str = os.getenv("OPENPAGES_USERNAME", "")
     OPENPAGES_PASSWORD: str = os.getenv("OPENPAGES_PASSWORD", "")
     OPENPAGES_APIKEY: str = os.getenv("OPENPAGES_APIKEY", "")
-    
+    OPENPAGES_AUTHENTICATION_URL: str = os.getenv("OPENPAGES_AUTHENTICATION_URL", "")
+
     # Server settings
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))

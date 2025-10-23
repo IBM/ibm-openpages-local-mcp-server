@@ -8,6 +8,7 @@ import sys
 import json
 import logging
 import asyncio
+import pathlib
 from typing import Dict, Any, List, Optional
 
 # Import OpenPages client and tools
@@ -71,33 +72,42 @@ class LocalMCPServer:
         # Cache for type definitions
         self.type_definitions = {}
         
-        # Define available tools with basic schemas
-        self._init_tools()
+        # Load tools schema from JSON file
+        self._load_tools_schema()
         
         # Flag to indicate if dynamic schemas have been loaded
         self.dynamic_schemas_loaded = False
         
-    def _init_tools(self):
-        """Initialize tools with basic schemas"""
-        # Define available tools
-        self.tools = [
-            {
-                "name": "echo",
-                "description": "Echo the input text",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "text": {
-                            "type": "string",
-                            "description": "The text to echo"
-                        }
-                    },
-                    "required": ["text"]
+    def _load_tools_schema(self):
+        """Load tools schema from JSON file"""
+        try:
+            # Get the path to the tools_schema.json file
+            schema_path = pathlib.Path(__file__).parent / 'tools_schema.json'
+            
+            # Load the schema from the file
+            with open(schema_path, 'r') as f:
+                self.tools = json.load(f)
+                
+            logger.info(f"Loaded tools schema from {schema_path}")
+        except Exception as e:
+            logger.error(f"Error loading tools schema: {e}")
+            # Fallback to a minimal schema if the file can't be loaded
+            self.tools = [
+                {
+                    "name": "echo",
+                    "description": "Echo the input text",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "text": {
+                                "type": "string",
+                                "description": "The text to echo"
+                            }
+                        },
+                        "required": ["text"]
+                    }
                 }
-            },
-            # Other tools...
-        ]
-        # Tools are defined in the class initialization
+            ]
         
     async def initialize_client(self):
         """Initialize the OpenPages client authentication"""
@@ -112,181 +122,9 @@ class LocalMCPServer:
         
         # Initialize client authentication first
         await self.initialize_client()
-
-        # Define available tools
-        self.tools = [
-            {
-                "name": "echo",
-                "description": "Echo the input text",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "text": {
-                            "type": "string",
-                            "description": "The text to echo"
-                        }
-                    },
-                    "required": ["text"]
-                }
-            },
-            {
-                "name": "create_control",
-                "description": "Create a new control in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Name of the control (required)"
-                        }
-                    },
-                    "required": ["name"]
-                }
-            },
-            {
-                "name": "update_control",
-                "description": "Update an existing control in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "resource_id": {
-                            "type": "string",
-                            "description": "Resource ID of the control to update (required)"
-                        }
-                    },
-                    "required": ["resource_id"]
-                }
-            },
-            #create_issue tool will be populated with dynamic schema during initialization
-            {
-                "name": "create_issue",
-                "description": "Create a new issue in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Name of the issue (required)"
-                        }
-                    },
-                    "required": ["name"]
-                }
-            },
-            {
-                "name": "update_issue",
-                "description": "Update an existing issue in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "resource_id": {
-                            "type": "string",
-                            "description": "Resource ID of the issue to update (required)"
-                        }
-                    },
-                    "required": ["resource_id"]
-                }
-            },
-            {
-                "name": "query_issues",
-                "description": "Query for issues in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Filter issues by name (partial match, optional)"
-                        },
-                        "owner_filter": {
-                            "type": "boolean",
-                            "description": "Filter by current user ownership (default: False)"
-                        },
-                        "status_filter": {
-                            "type": "string",
-                            "description": "Filter issues by status (optional)"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of issues to return (default: 20)"
-                        },
-                        "sort_by": {
-                            "type": "string",
-                            "description": "Field to sort by (default: 'Name')"
-                        },
-                        "sort_order": {
-                            "type": "string",
-                            "description": "Sort order, 'ASC' or 'DESC' (default: 'ASC')"
-                        },
-                        "fields": {
-                            "type": "array",
-                            "items": {
-                                "type": "string",
-                                "enum": []  # This will be populated with field names
-                            },
-                            "description": "List of additional fields to include in the output (multiselect). Resource ID, Name, Description, and Status are always included. Available fields: Priority, Owner, Due Date, and others from the issue type definition."
-                        }
-                    }
-                }
-            },
-            {
-                "name": "query_controls",
-                "description": "Query for controls in OpenPages",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string",
-                            "description": "Filter issues by name (partial match, optional)"
-                        },
-                        "owner_filter": {
-                            "type": "boolean",
-                            "description": "Filter by current user ownership (default: False)"
-                        },
-                        "status_filter": {
-                            "type": "string",
-                            "description": "Filter issues by status (optional)"
-                        },
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of issues to return (default: 20)"
-                        },
-                        "sort_by": {
-                            "type": "string",
-                            "description": "Field to sort by (default: 'Name')"
-                        },
-                        "sort_order": {
-                            "type": "string",
-                            "description": "Sort order, 'ASC' or 'DESC' (default: 'ASC')"
-                        },
-                        "fields": {
-                            "type": "array",
-                            "items": {
-                                "type": "string",
-                                "enum": []  # This will be populated with field names
-                            },
-                            "description": "List of additional fields to include in the output (multiselect). Resource ID, Name, Description, and Status are always included. Available fields: Priority, Owner, Due Date, and others from the issue type definition."
-                        }
-                    }
-                }
-            }
-            # {
-            #     "name": "custom_query",
-            #     "description": "Execute a custom OpenPages query",
-            #     "inputSchema": {
-            #         "type": "object",
-            #         "properties": {
-            #             "query": {
-            #                 "type": "string",
-            #                 "description": "SQL-like query statement for OpenPages"
-            #             },
-            #             "limit": {
-            #                 "type": "integer",
-            #                 "description": "Maximum number of results"
-            #             }
-            #         },
-            #         "required": ["query"]
-            #     }
-            # }
-        ]
+        
+        # Reload the tools schema to ensure we have the latest version
+        self._load_tools_schema()
             
         try:
             # Get dynamic schema for create_issue
@@ -305,13 +143,17 @@ class LocalMCPServer:
                     update_schema = {
                         "type": "object",
                         "properties": {},
-                        "required": ["resource_id", "name"]
+                        "required": ["name"]
                     }
                     
                     # Add resource_id field
                     update_schema["properties"]["resource_id"] = {
                         "type": "string",
-                        "description": "Resource ID of the issue to update (required)"
+                        "description": "Resource ID of the issue to update. (Note: Either Resource_ID or Path is required.)"
+                    }
+                    update_schema["properties"]["path"] = {
+                        "type": "string",
+                        "description": "Path of the issue including the name. (Note: Either Resource_ID or Path is required.)"
                     }
                     
                     # Copy all properties from issue_schema including 'name'
@@ -349,13 +191,17 @@ class LocalMCPServer:
                     update_schema = {
                         "type": "object",
                         "properties": {},
-                        "required": ["resource_id", "name"]
+                        "required": ["name"]
                     }
                     
                     # Add resource_id field
                     update_schema["properties"]["resource_id"] = {
                         "type": "string",
-                        "description": "Resource ID of the control to update (required)"
+                        "description": "Resource ID of the control to update (Note: Either Resource_ID or Path is required.)"
+                    }
+                    update_schema["properties"]["path"] = {
+                        "type": "string",
+                        "description": "Path of the control including the name. (Note: Either Resource_ID or Path is required.)"
                     }
                     
                     # Copy all properties from control_schema including 'name'

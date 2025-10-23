@@ -1,0 +1,162 @@
+[
+    {
+        "name": "echo",
+        "description": "Echo the input text",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The text to echo"
+                }
+            },
+            "required": ["text"]
+        }
+    },
+    {
+        "name": "create_control",
+        "description": "Create a new control in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the control (required)"
+                }
+            },
+            "required": ["name"]
+        }
+    },
+    {
+        "name": "update_control",
+        "description": "Update an existing control in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "resource_id": {
+                    "type": "string",
+                    "description": "Resource ID of the control to update"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Path of the control to update"
+                }
+            },
+            "required": ["name"]
+        }
+    },
+    {
+        "name": "query_controls",
+        "description": "Query for controls in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Filter issues by name (partial match, optional)"
+                },
+                "owner_filter": {
+                    "type": "boolean",
+                    "description": "Filter by current user ownership (default: False)"
+                },
+                "status_filter": {
+                    "type": "string",
+                    "description": "Filter issues by status (optional)"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of issues to return (default: 20)"
+                },
+                "sort_by": {
+                    "type": "string",
+                    "description": "Field to sort by (default: 'Name')"
+                },
+                "sort_order": {
+                    "type": "string",
+                    "description": "Sort order, 'ASC' or 'DESC' (default: 'ASC')"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": []
+                    },
+                    "description": "List of additional fields to include in the output (multiselect). Resource ID, Name, Description, and Status are always included. Available fields: Priority, Owner, Due Date, and others from the issue type definition."
+                }
+            }
+        }
+    },
+    {
+        "name": "create_issue",
+        "description": "Create a new issue in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the issue (required)"
+                }
+            },
+            "required": ["name"]
+        }
+    },
+    {
+        "name": "update_issue",
+        "description": "Update an existing issue in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "resource_id": {
+                    "type": "string",
+                    "description": "Resource ID of the issue to update"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Path of the issue to update"
+                }
+            },
+            "required": ["name"]
+        }
+    },
+    {
+        "name": "query_issues",
+        "description": "Query for issues in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Filter issues by name (partial match, optional)"
+                },
+                "owner_filter": {
+                    "type": "boolean",
+                    "description": "Filter by current user ownership (default: False)"
+                },
+                "status_filter": {
+                    "type": "string",
+                    "description": "Filter issues by status (optional)"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of issues to return (default: 20)"
+                },
+                "sort_by": {
+                    "type": "string",
+                    "description": "Field to sort by (default: 'Name')"
+                },
+                "sort_order": {
+                    "type": "string",
+                    "description": "Sort order, 'ASC' or 'DESC' (default: 'ASC')"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": []
+                    },
+                    "description": "List of additional fields to include in the output (multiselect). Resource ID, Name, Description, and Status are always included. Available fields: Priority, Owner, Due Date, and others from the issue type definition."
+                }
+            }
+        }
+    }
+]

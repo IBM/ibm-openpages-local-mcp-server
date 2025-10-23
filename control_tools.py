@@ -5,6 +5,7 @@ Provides tools for working with controls in OpenPages
 
 import logging
 import json
+import urllib.parse
 from typing import Any, Dict, List, Optional
 
 from mcp.types import TextContent  # type: ignore
@@ -439,7 +440,8 @@ class ControlTools:
         
         Args:
             arguments: Tool arguments
-                - resource_id: Resource ID of the control to update (required)
+                - resource_id: Resource ID of the control to update
+                - path: Path of the control including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Control #1)
                 - name: Name of the control (optional)
                 - title: Control title (optional)
                 - description: Description of the control (optional)
@@ -450,11 +452,24 @@ class ControlTools:
         """
         # Extract required fields
         resource_id = arguments.get('resource_id')
-        if not resource_id:
-            return [TextContent(type="text", text="Error: Resource ID is required")]
+        path = arguments.get('path')
         
-        # Extract common fields
+        if not resource_id and not path:
+            return [TextContent(type="text", text="Error: Resource ID or path is required")]
+        
+        if resource_id and path:
+            return [TextContent(type="text", text="Error: Only one of resource ID or path is required")]
+
         name = arguments.get('name')
+        if not name:
+            return [TextContent(type="text", text="Error: Issue name is required")]
+        
+        object_id = resource_id
+        if not object_id:
+            object_id = f"Controls/{path}"
+            object_id = urllib.parse.quote(object_id, safe='')
+            
+        # Extract common fields
         title = arguments.get('title')
         description = arguments.get('description')
         control_type = "SOXControl"
@@ -492,7 +507,7 @@ class ControlTools:
             # Process all arguments and map them to OpenPages fields
             for arg_name, arg_value in arguments.items():
                 # Skip special fields that are handled separately
-                if arg_name in ['name', 'title', 'description', 'resource_id']:
+                if arg_name in ['name', 'title', 'description', 'resource_id', 'path']:
                     continue
                     
                 # Skip empty values
@@ -543,8 +558,8 @@ class ControlTools:
         
         try:
             # Update the control
-            logger.info(f"Updating control {resource_id}: {content_data}")
-            result = await self.client.update_content(resource_id, content_data)
+            logger.info(f"Updating control {object_id}: {content_data}")
+            result = await self.client.update_content(object_id, content_data)
             
             # Extract resource ID from the result
             updated_resource_id = result.get("id")

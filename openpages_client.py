@@ -6,8 +6,11 @@ Provides functionality to interact with IBM OpenPages REST API
 import logging
 import base64
 from typing import Any, Dict, List, Optional
-import httpx  # type: ignore
-from client_settings import settings
+import httpx
+from settings import settings
+
+# Type annotation for better error handling
+HTTPXError = httpx.HTTPError
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -146,11 +149,15 @@ class OpenPagesClient:
                     logger.error(f"Response: {token_data}")
                     return None
                 
-        except httpx.HTTPError as e:
+        except httpx.HTTPStatusError as e:
+            # This exception has response attribute
             logger.error(f"Error fetching token: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                logger.error(f"Response status: {e.response.status_code}")
-                logger.error(f"Response body: {e.response.text}")
+            logger.error(f"Response status: {e.response.status_code}")
+            logger.error(f"Response body: {e.response.text}")
+            return None
+        except httpx.RequestError as e:
+            # Network-related errors
+            logger.error(f"Request error fetching token: {e}")
             return None
     
     async def initialize_auth(self):
@@ -197,7 +204,11 @@ class OpenPagesClient:
         logger.info(f"OpenPages API Query Request: {self.base_url}/opgrc/api/v2/query")
         logger.info(f"Request Body: {request_body}")
         
-        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+        # Use SSL verification setting from config
+        if not settings.SSL_VERIFY:
+            logger.warning("SSL verification is disabled. This is not recommended for production environments.")
+            
+        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/opgrc/api/v2/query",
@@ -218,11 +229,16 @@ class OpenPagesClient:
                         logger.info(f"Response Body: {response_json}")
                 
                 return response_json
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error during query: {e}")
-                if hasattr(e, 'response') and e.response is not None:
-                    logger.error(f"Response status: {e.response.status_code}")
-                    logger.error(f"Response body: {e.response.text}")
+            except httpx.HTTPStatusError as e:
+                # This exception has response attribute
+                logger.error(f"HTTP status error during query: {e}")
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+                # Return a mock empty result instead of raising an error
+                return {"rows": []}
+            except httpx.RequestError as e:
+                # Network-related errors
+                logger.error(f"Request error during query: {e}")
                 # Return a mock empty result instead of raising an error
                 return {"rows": []}
     
@@ -242,7 +258,11 @@ class OpenPagesClient:
         url = f"{self.base_url}/opgrc/api/v2/contents/{resource_id}"
         logger.info(f"OpenPages API Get Content Request: {url}")
         
-        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+        # Use SSL verification setting from config
+        if not settings.SSL_VERIFY:
+            logger.warning("SSL verification is disabled. This is not recommended for production environments.")
+            
+        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
             try:
                 response = await client.get(
                     url,
@@ -262,11 +282,15 @@ class OpenPagesClient:
                         logger.info(f"Response Body: {response_json}")
                 
                 return response_json
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error getting content: {e}")
-                if hasattr(e, 'response') and e.response is not None:
-                    logger.error(f"Response status: {e.response.status_code}")
-                    logger.error(f"Response body: {e.response.text}")
+            except httpx.HTTPStatusError as e:
+                # This exception has response attribute
+                logger.error(f"HTTP status error getting content: {e}")
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+                raise
+            except httpx.RequestError as e:
+                # Network-related errors
+                logger.error(f"Request error getting content: {e}")
                 raise
     
     async def create_content(self, content_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -286,7 +310,11 @@ class OpenPagesClient:
         logger.info(f"OpenPages API Create Content Request: {url}")
         logger.info(f"Request Body: {content_data}")
         
-        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+        # Use SSL verification setting from config
+        if not settings.SSL_VERIFY:
+            logger.warning("SSL verification is disabled. This is not recommended for production environments.")
+            
+        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
             try:
                 response = await client.post(
                     url,
@@ -307,11 +335,15 @@ class OpenPagesClient:
                         logger.info(f"Response Body: {response_json}")
                 
                 return response_json
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error creating content: {e}")
-                if hasattr(e, 'response') and e.response is not None:
-                    logger.error(f"Response status: {e.response.status_code}")
-                    logger.error(f"Response body: {e.response.text}")
+            except httpx.HTTPStatusError as e:
+                # This exception has response attribute
+                logger.error(f"HTTP status error creating content: {e}")
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+                raise
+            except httpx.RequestError as e:
+                # Network-related errors
+                logger.error(f"Request error creating content: {e}")
                 raise
     
     async def update_content(self, resource_id: str, content_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -332,7 +364,11 @@ class OpenPagesClient:
         logger.info(f"OpenPages API Update Content Request: {url}")
         logger.info(f"Request Body: {content_data}")
         
-        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+        # Use SSL verification setting from config
+        if not settings.SSL_VERIFY:
+            logger.warning("SSL verification is disabled. This is not recommended for production environments.")
+            
+        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
             try:
                 response = await client.put(
                     url,
@@ -353,11 +389,15 @@ class OpenPagesClient:
                         logger.info(f"Response Body: {response_json}")
                 
                 return response_json
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error updating content: {e}")
-                if hasattr(e, 'response') and e.response is not None:
-                    logger.error(f"Response status: {e.response.status_code}")
-                    logger.error(f"Response body: {e.response.text}")
+            except httpx.HTTPStatusError as e:
+                # This exception has response attribute
+                logger.error(f"HTTP status error updating content: {e}")
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+                raise
+            except httpx.RequestError as e:
+                # Network-related errors
+                logger.error(f"Request error updating content: {e}")
                 raise
     
     async def get_current_user(self) -> Optional[str]:
@@ -410,7 +450,11 @@ class OpenPagesClient:
         url = f"{self.base_url}/opgrc/api/v2/types/{type_name}"
         logger.info(f"OpenPages API Get Type Definition Request: {url}")
         
-        async with httpx.AsyncClient(verify=False) as client:  # Disable SSL verification for self-signed certificates
+        # Use SSL verification setting from config
+        if not settings.SSL_VERIFY:
+            logger.warning("SSL verification is disabled. This is not recommended for production environments.")
+            
+        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
             try:
                 response = await client.get(
                     url,
@@ -430,11 +474,15 @@ class OpenPagesClient:
                         logger.info(f"Response Body: {response_json}")
                 
                 return response_json
-            except httpx.HTTPError as e:
-                logger.error(f"HTTP error getting type definition: {e}")
-                if hasattr(e, 'response') and e.response is not None:
-                    logger.error(f"Response status: {e.response.status_code}")
-                    logger.error(f"Response body: {e.response.text}")
+            except httpx.HTTPStatusError as e:
+                # This exception has response attribute
+                logger.error(f"HTTP status error getting type definition: {e}")
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+                raise
+            except httpx.RequestError as e:
+                # Network-related errors
+                logger.error(f"Request error getting type definition: {e}")
                 raise
 
 # Made with Bob

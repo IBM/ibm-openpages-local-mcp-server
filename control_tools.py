@@ -255,14 +255,14 @@ class ControlTools:
         additional_fields = arguments.get('fields', [])
         
         # Always include these required fields
-        required_fields = ['[Resource ID]', '[Name]', '[Description]', '[OPSS-Iss:Status]']
+        required_fields = ['[Resource ID]', '[Name]', '[Description]', '[OPSS-Ctl:Status]']
         
         # # Map common field names to their SQL column names
         field_mapping = {
             # 'Priority': '[OPSS-Iss:Priority]',
             # 'Owner': '[Owner]',
             # 'Due Date': '[OPSS-Iss:DueDate]',
-            # 'Status': '[OPSS-Iss:Status]'
+            # 'Status': '[OPSS-Ctl:Status]'
         }
         
         # Add additional fields if specified
@@ -331,7 +331,7 @@ class ControlTools:
                 query += f" AND [Owner] = '{current_user}'"
         
         # if status_filter:
-        #     query += f" AND [OPSS-Iss:Status] = '{status_filter}'"
+        #     query += f" AND [OPSS-Ctl:Status] = '{status_filter}'"
             
         # Add sorting with multiple fields
         sort_clauses = []
@@ -391,7 +391,7 @@ class ControlTools:
         display_names['Resource ID'] = 'ID'
         display_names['Name'] = 'Name'
         display_names['Description'] = 'Description'
-        # display_names['OPSS-Iss:Status'] = 'Status'
+        # display_names['OPSS-Ctl:Status'] = 'Status'
         
         for control in controls:
             response_text += f"## {control.get('Name', 'N/A')}\n"
@@ -400,7 +400,7 @@ class ControlTools:
             response_text += f"- **ID**: {control.get('Resource ID', 'N/A')}\n"
             
             # Status might be returned with different field names depending on the query
-            # status_value = control.get('Status', control.get('OPSS-Iss:Status', 'N/A'))
+            # status_value = control.get('Status', control.get('OPSS-Ctl:Status', 'N/A'))
             # # Handle enum types (objects with name property)
             # if isinstance(status_value, dict) and 'name' in status_value:
             #     status_value = status_value['name']

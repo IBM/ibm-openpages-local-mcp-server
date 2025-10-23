@@ -324,23 +324,64 @@ class LocalMCPServer:
                 }
             },
             {
-                "name": "custom_query",
-                "description": "Execute a custom OpenPages query",
+                "name": "query_controls",
+                "description": "Query for controls in OpenPages",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
-                        "query": {
+                        "name": {
                             "type": "string",
-                            "description": "SQL-like query statement for OpenPages"
+                            "description": "Filter issues by name (partial match, optional)"
+                        },
+                        "owner_filter": {
+                            "type": "boolean",
+                            "description": "Filter by current user ownership (default: False)"
+                        },
+                        "status_filter": {
+                            "type": "string",
+                            "description": "Filter issues by status (optional)"
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Maximum number of results"
+                            "description": "Maximum number of issues to return (default: 20)"
+                        },
+                        "sort_by": {
+                            "type": "string",
+                            "description": "Field to sort by (default: 'Name')"
+                        },
+                        "sort_order": {
+                            "type": "string",
+                            "description": "Sort order, 'ASC' or 'DESC' (default: 'ASC')"
+                        },
+                        "fields": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": []  # This will be populated with field names
+                            },
+                            "description": "List of additional fields to include in the output (multiselect). Resource ID, Name, Description, and Status are always included. Available fields: Priority, Owner, Due Date, and others from the issue type definition."
                         }
-                    },
-                    "required": ["query"]
+                    }
                 }
             }
+            # {
+            #     "name": "custom_query",
+            #     "description": "Execute a custom OpenPages query",
+            #     "inputSchema": {
+            #         "type": "object",
+            #         "properties": {
+            #             "query": {
+            #                 "type": "string",
+            #                 "description": "SQL-like query statement for OpenPages"
+            #             },
+            #             "limit": {
+            #                 "type": "integer",
+            #                 "description": "Maximum number of results"
+            #             }
+            #         },
+            #         "required": ["query"]
+            #     }
+            # }
         ]
             
         try:
@@ -626,7 +667,7 @@ class LocalMCPServer:
         elif "Model" in object_type:
             status_field_name = "MRG-Model:Status"
         elif "Control" in object_type:
-            status_field_name = "OPSS-Ctrl:Status"
+            status_field_name = "OPSS-Ctl:Status"
         elif "Risk" in object_type:
             status_field_name = "OPSS-Risk:Status"
             
@@ -673,7 +714,7 @@ class LocalMCPServer:
             elif "Model" in object_type:
                 skip_fields.append("MRG-Model:Status")
             elif "Control" in object_type:
-                skip_fields.append("OPSS-Ctrl:Status")
+                skip_fields.append("OPSS-Ctl:Status")
             elif "Risk" in object_type:
                 skip_fields.append("OPSS-Risk:Status")
                 
@@ -981,6 +1022,12 @@ class LocalMCPServer:
             elif name == "update_control":
                 # Use the actual control_tools implementation
                 result = await self.control_tools.update_control(arguments)
+                return {
+                    "result": [{"type": "text", "text": item.text} for item in result]
+                }
+            elif name == "query_controls":
+                # Use the actual issue_tools implementation
+                result = await self.control_tools.query_controls(arguments)
                 return {
                     "result": [{"type": "text", "text": item.text} for item in result]
                 }

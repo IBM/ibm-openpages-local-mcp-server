@@ -7,7 +7,7 @@ import logging
 import base64
 from typing import Any, Dict, List, Optional
 import httpx
-from settings import settings
+from settings import Settings, settings
 
 # Type annotation for better error handling
 HTTPXError = httpx.HTTPError
@@ -19,7 +19,8 @@ class OpenPagesClient:
     """Client for interacting with IBM OpenPages API"""
     
     def __init__(self, base_url: str, auth_type: str = "basic", username: Optional[str] = None,
-                 password: Optional[str] = None, api_key: Optional[str] = None, authentication_url: Optional[str] = None):
+                 password: Optional[str] = None, api_key: Optional[str] = None, authentication_url: Optional[str] = None,
+                 custom_settings: Optional[Settings] = None):
         """
         Initialize the OpenPages client
         
@@ -30,7 +31,11 @@ class OpenPagesClient:
             password: OpenPages password (required if auth_type is "basic")
             api_key: API key for bearer authentication (required if auth_type is "bearer")
             authentication_url: Authentication URL for bearer authentication (required if auth_type is "bearer")
+            custom_settings: Optional custom settings object to use instead of global settings
         """
+        # Use provided settings or fall back to global settings
+        self.settings = custom_settings if custom_settings else settings
+        
         # Validate authentication parameters
         if auth_type.lower() == "basic":
             if not username or not password:
@@ -205,10 +210,10 @@ class OpenPagesClient:
         logger.info(f"Request Body: {request_body}")
         
         # Use SSL verification setting from config
-        if not settings.SSL_VERIFY:
+        if not self.settings.SSL_VERIFY:
             logger.warning("SSL verification is disabled. This is not recommended for production environments.")
             
-        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
+        async with httpx.AsyncClient(verify=self.settings.SSL_VERIFY) as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/opgrc/api/v2/query",
@@ -220,7 +225,7 @@ class OpenPagesClient:
                 response_json = response.json()
                 
                 # Log the response, but truncate if too large
-                if settings.DEBUG:
+                if self.settings.DEBUG:
                     logger.info(f"OpenPages API Query Response Status: {response.status_code}")
                     response_str = str(response_json)
                     if len(response_str) > 1000:
@@ -259,10 +264,10 @@ class OpenPagesClient:
         logger.info(f"OpenPages API Get Content Request: {url}")
         
         # Use SSL verification setting from config
-        if not settings.SSL_VERIFY:
+        if not self.settings.SSL_VERIFY:
             logger.warning("SSL verification is disabled. This is not recommended for production environments.")
             
-        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
+        async with httpx.AsyncClient(verify=self.settings.SSL_VERIFY) as client:
             try:
                 response = await client.get(
                     url,
@@ -273,7 +278,7 @@ class OpenPagesClient:
                 response_json = response.json()
                 
                 # Log the response, but truncate if too large
-                if settings.DEBUG:
+                if self.settings.DEBUG:
                     logger.info(f"OpenPages API Get Content Response Status: {response.status_code}")
                     response_str = str(response_json)
                     if len(response_str) > 1000:
@@ -311,10 +316,10 @@ class OpenPagesClient:
         logger.info(f"Request Body: {content_data}")
         
         # Use SSL verification setting from config
-        if not settings.SSL_VERIFY:
+        if not self.settings.SSL_VERIFY:
             logger.warning("SSL verification is disabled. This is not recommended for production environments.")
             
-        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
+        async with httpx.AsyncClient(verify=self.settings.SSL_VERIFY) as client:
             try:
                 response = await client.post(
                     url,
@@ -326,7 +331,7 @@ class OpenPagesClient:
                 response_json = response.json()
                 
                 # Log the response, but truncate if too large
-                if settings.DEBUG:
+                if self.settings.DEBUG:
                     logger.info(f"OpenPages API Create Content Response Status: {response.status_code}")
                     response_str = str(response_json)
                     if len(response_str) > 1000:
@@ -365,10 +370,10 @@ class OpenPagesClient:
         logger.info(f"Request Body: {content_data}")
         
         # Use SSL verification setting from config
-        if not settings.SSL_VERIFY:
+        if not self.settings.SSL_VERIFY:
             logger.warning("SSL verification is disabled. This is not recommended for production environments.")
             
-        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
+        async with httpx.AsyncClient(verify=self.settings.SSL_VERIFY) as client:
             try:
                 response = await client.put(
                     url,
@@ -380,7 +385,7 @@ class OpenPagesClient:
                 response_json = response.json()
                 
                 # Log the response, but truncate if too large
-                if settings.DEBUG:
+                if self.settings.DEBUG:
                     logger.info(f"OpenPages API Update Content Response Status: {response.status_code}")
                     response_str = str(response_json)
                     if len(response_str) > 1000:
@@ -451,10 +456,10 @@ class OpenPagesClient:
         logger.info(f"OpenPages API Get Type Definition Request: {url}")
         
         # Use SSL verification setting from config
-        if not settings.SSL_VERIFY:
+        if not self.settings.SSL_VERIFY:
             logger.warning("SSL verification is disabled. This is not recommended for production environments.")
             
-        async with httpx.AsyncClient(verify=settings.SSL_VERIFY) as client:
+        async with httpx.AsyncClient(verify=self.settings.SSL_VERIFY) as client:
             try:
                 response = await client.get(
                     url,
@@ -465,7 +470,7 @@ class OpenPagesClient:
                 response_json = response.json()
                 
                 # Log the response, but truncate if too large
-                if settings.DEBUG:
+                if self.settings.DEBUG:
                     logger.info(f"OpenPages API Get Type Definition Response Status: {response.status_code}")
                     response_str = str(response_json)
                     if len(response_str) > 1000:

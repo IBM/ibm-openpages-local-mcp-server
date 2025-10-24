@@ -11,11 +11,12 @@ from typing import Any, Dict, List, Optional
 from mcp.types import TextContent  # type: ignore
 
 from openpages_client import OpenPagesClient
+from base_tool import BaseTool
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-class ControlTools:
+class ControlTools(BaseTool):
     """
     Tools for working with controls in OpenPages
     
@@ -30,7 +31,7 @@ class ControlTools:
         Args:
             client: OpenPages API client
         """
-        self.client = client
+        super().__init__(client)
         
     async def get_control_fields(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
@@ -46,9 +47,8 @@ class ControlTools:
         object_type = arguments.get('control_type', 'SOXControl')
         
         try:
-            # Get the type definition using the client's method
-            logger.info(f"Fetching type definition for: {object_type}")
-            type_info = await self.client.get_type_definition(object_type)
+            # Get the type definition using the base class method
+            type_info = await self.get_type_definition(object_type)
             
             # Extract field definitions
             field_definitions = type_info.get('field_definitions', [])
@@ -123,7 +123,8 @@ class ControlTools:
         
         # Get field definitions to properly format field values
         try:
-            type_info = await self.client.get_type_definition(control_type)
+            # Use base class method to get type definition
+            type_info = await self.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
             # Create a mapping of field names to their definitions for easy lookup
@@ -161,12 +162,8 @@ class ControlTools:
                     field_name = field_def.get('name')
                     field_type = field_def.get('data_type', 'STRING_TYPE')
                     
-                    # Format the value based on field type
-                    formatted_value = arg_value
-                    
-                    # Handle enum types (need to be objects with name property)
-                    if field_type == "ENUM_TYPE":
-                        formatted_value = {"name": arg_value}
+                    # Format the value based on field type using base class method
+                    formatted_value = self.format_field_value(arg_value, field_type)
                     
                     # Add the field to the content data
                     content_data["fields"].append({
@@ -199,14 +196,18 @@ class ControlTools:
             if not resource_id:
                 return [TextContent(type="text", text="Error: Failed to create control (no resource ID returned)")]
             
-            response_text = f"Successfully created control:\n\n"
-            response_text += f"- **Name**: {name}\n"
-            response_text += f"- **Resource ID**: {resource_id}\n"
-            response_text += f"- **Type**: {control_type}\n"
-            response_text += f"- **parent**: {primaryParentId}\n"
+            # Use base class method to create response text
+            response_items = {
+                "Name": name,
+                "Resource ID": resource_id,
+                "Type": control_type,
+                "Parent": primaryParentId
+            }
             
             if description:
-                response_text += f"- **Description**: {description}\n"
+                response_items["Description"] = description
+                
+            response_text = self.create_response_text("Successfully created control:", response_items)
             
             return [TextContent(type="text", text=response_text)]
         
@@ -222,7 +223,7 @@ class ControlTools:
             arguments: Tool arguments
                 - name: Filter controls by name (partial match, optional)
                 - owner_filter: Filter by current user ownership (default: False)
-                # - status_filter: Filter controls by status (optional)
+                - status_filter: Filter controls by status (optional)
                 - limit: Maximum number of controls to return (default: 20)
                 - sort_by: Field to sort by (default: "Name")
                 - sort_order: Sort order, "ASC" or "DESC" (default: "ASC")
@@ -234,7 +235,7 @@ class ControlTools:
         """
         name_filter = arguments.get('name')
         owner_filter = arguments.get('owner_filter', False)
-        # status_filter = arguments.get('status_filter')
+        status_filter = arguments.get('status_filter')
         limit = arguments.get('limit', 20)
         sort_by = arguments.get('sort_by', [{'field': 'Name', 'order': 'ASC'}])
         
@@ -258,31 +259,20 @@ class ControlTools:
         # Always include these required fields
         required_fields = ['[Resource ID]', '[Name]', '[Description]', '[OPSS-Ctl:Status]']
         
-        # # Map common field names to their SQL column names
-        field_mapping = {
-            # 'Priority': '[OPSS-Iss:Priority]',
-            # 'Owner': '[Owner]',
-            # 'Due Date': '[OPSS-Iss:DueDate]',
-            # 'Status': '[OPSS-Ctl:Status]'
-        }
-        
         # Add additional fields if specified
         selected_fields = required_fields.copy()
         
         # Try to get field definitions to build a more complete mapping
         try:
-            type_info = await self.client.get_type_definition('SOXControl')
+            # Use base class method to get type definition
+            type_info = await self.get_type_definition('SOXControl')
             field_definitions = type_info.get('field_definitions', [])
             
-            # Update field mapping with all available fields from type definition
-            for field_def in field_definitions:
-                field_name = field_def.get('name')
-                if field_name:
-                    # Create a simplified name for easier matching
-                    simple_name = field_name.split(':')[-1] if ':' in field_name else field_name
-                    field_mapping[simple_name] = f'[{field_name}]'
+            # Use base class method to create field mapping
+            field_mapping = self.create_field_mapping(field_definitions)
         except Exception as e:
             logger.warning(f"Could not fetch field definitions: {e}. Using default field mapping.")
+            field_mapping = {}
         
         # Process additional fields
         for field in additional_fields:
@@ -331,8 +321,8 @@ class ControlTools:
             if current_user:
                 query += f" AND [Owner] = '{current_user}'"
         
-        # if status_filter:
-        #     query += f" AND [OPSS-Ctl:Status] = '{status_filter}'"
+        if status_filter:
+            query += f" AND [OPSS-Ctl:Status] = '{status_filter}'"
             
         # Add sorting with multiple fields
         sort_clauses = []
@@ -392,43 +382,40 @@ class ControlTools:
         display_names['Resource ID'] = 'ID'
         display_names['Name'] = 'Name'
         display_names['Description'] = 'Description'
-        # display_names['OPSS-Ctl:Status'] = 'Status'
+        display_names['OPSS-Ctl:Status'] = 'Status'
         
         for control in controls:
             response_text += f"## {control.get('Name', 'N/A')}\n"
             
+            # Create a dictionary for the control items to display
+            control_items = {}
+            
             # Always show required fields first
-            response_text += f"- **ID**: {control.get('Resource ID', 'N/A')}\n"
+            control_items["ID"] = control.get('Resource ID', 'N/A')
             
             # Status might be returned with different field names depending on the query
-            # status_value = control.get('Status', control.get('OPSS-Ctl:Status', 'N/A'))
-            # # Handle enum types (objects with name property)
-            # if isinstance(status_value, dict) and 'name' in status_value:
-            #     status_value = status_value['name']
-            # response_text += f"- **Status**: {status_value}\n"
+            status_value = control.get('Status', control.get('OPSS-Ctl:Status', 'N/A'))
+            control_items["Status"] = status_value
             
             # Add description if available
             description = control.get('Description')
             if description:
-                response_text += f"- **Description**: {description}\n"
+                control_items["Description"] = description
             
             # Add all other available fields that were selected
             for field_name, field_value in control.items():
                 # Skip fields we've already handled
                 if field_name in ['Resource ID', 'Name', 'Description']:
                     continue
-                    
-                # Display fields even if they have null values
-                if field_value is None or field_value == '':
-                    field_value = 'N/A'
-                
-                # Handle enum types (objects with name property)
-                if isinstance(field_value, dict) and 'name' in field_value:
-                    field_value = field_value['name']
                 
                 # Get display name for the field
                 display_name = display_names.get(field_name, field_name)
-                response_text += f"- **{display_name}**: {field_value}\n"
+                control_items[display_name] = field_value
+            
+            # Use base class method to format the control items
+            for key, value in control_items.items():
+                display_value = self.extract_display_value(value)
+                response_text += f"- **{key}**: {display_value}\n"
             
             response_text += "\n"
         
@@ -490,7 +477,8 @@ class ControlTools:
         
         # Get field definitions to properly format field values
         try:
-            type_info = await self.client.get_type_definition(control_type)
+            # Use base class method to get type definition
+            type_info = await self.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
             # Create a mapping of field names to their definitions for easy lookup
@@ -528,12 +516,8 @@ class ControlTools:
                     field_name = field_def.get('name')
                     field_type = field_def.get('data_type', 'STRING_TYPE')
                     
-                    # Format the value based on field type
-                    formatted_value = arg_value
-                    
-                    # Handle enum types (need to be objects with name property)
-                    if field_type == "ENUM_TYPE":
-                        formatted_value = {"name": arg_value}
+                    # Format the value based on field type using base class method
+                    formatted_value = self.format_field_value(arg_value, field_type)
                     
                     # Add the field to the content data
                     content_data["fields"].append({
@@ -566,14 +550,18 @@ class ControlTools:
             if not updated_resource_id:
                 return [TextContent(type="text", text="Error: Failed to update control (no resource ID returned)")]
             
-            response_text = f"Successfully updated control:\n\n"
-            response_text += f"- **Resource ID**: {updated_resource_id}\n"
+            # Use base class method to create response text
+            response_items = {
+                "Resource ID": updated_resource_id
+            }
             
             if name:
-                response_text += f"- **Name**: {name}\n"
-            
+                response_items["Name"] = name
+                
             if description:
-                response_text += f"- **Description**: {description}\n"
+                response_items["Description"] = description
+                
+            response_text = self.create_response_text("Successfully updated control:", response_items)
             
             return [TextContent(type="text", text=response_text)]
         

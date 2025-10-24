@@ -62,7 +62,8 @@ class LocalMCPServer:
                 self.settings.OPENPAGES_USERNAME,
                 self.settings.OPENPAGES_PASSWORD,
                 self.settings.OPENPAGES_APIKEY,
-                self.settings.OPENPAGES_AUTHENTICATION_URL
+                self.settings.OPENPAGES_AUTHENTICATION_URL,
+                custom_settings=self.settings
             )
             logger.debug("OpenPages client initialized successfully")
         except Exception as e:

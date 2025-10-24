@@ -1,6 +1,6 @@
 """
-Control Tools for OpenPages MCP Server
-Provides tools for working with controls in OpenPages
+Issue Tools for OpenPages MCP Server
+Provides tools for working with issues in OpenPages
 """
 
 import logging
@@ -11,11 +11,12 @@ from typing import Any, Dict, List, Optional
 from mcp.types import TextContent  # type: ignore
 
 from openpages_client import OpenPagesClient
+from base_tool import BaseTool
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-class IssueTools:
+class IssueTools(BaseTool):
     """
     Tools for working with issues in OpenPages
     
@@ -30,7 +31,7 @@ class IssueTools:
         Args:
             client: OpenPages API client
         """
-        self.client = client
+        super().__init__(client)
         
     async def get_issue_fields(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """

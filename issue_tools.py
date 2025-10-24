@@ -112,6 +112,11 @@ class IssueTools(BaseTool):
         description = arguments.get('description', '')
         issue_type = "SOXIssue"
         
+        # If primaryParentId is provided and not a number, resolve it using the utility function
+        if primaryParentId and not primaryParentId.isdigit():
+            logger.info(f"primaryParentId appears to be a path: {primaryParentId}")
+            primaryParentId = await self.resolve_path_to_id(primaryParentId)
+        
         # Prepare content data
         content_data: dict[str, Any] = {
             "name": name,
@@ -208,6 +213,8 @@ class IssueTools(BaseTool):
             
             if description:
                 response_text += f"- **Description**: {description}\n"
+            
+            response_text += f"- **Task-View Path**: {self.get_task_view_url(resource_id)}"
             
             return [TextContent(type="text", text=response_text)]
         
@@ -581,6 +588,8 @@ class IssueTools(BaseTool):
             
             if description:
                 response_text += f"- **Description**: {description}\n"
+
+            response_text += f"- **Task-View Path**: {self.get_task_view_url(updated_resource_id)}\n"
             
             return [TextContent(type="text", text=response_text)]
         

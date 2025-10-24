@@ -4,6 +4,7 @@ Provides common functionality for all tool classes
 """
 
 import logging
+import urllib.parse
 from typing import Any, Dict, List, Optional
 
 from mcp.types import TextContent  # type: ignore
@@ -153,5 +154,57 @@ class BaseTool:
             response_text += f"- **{key}**: {display_value}\n"
             
         return response_text
+        
+    def get_task_view_url(self, resource_id: str) -> str:
+        """
+        Generate a task view URL for a resource
+        
+        Args:
+            resource_id: Resource ID to generate URL for
+            
+        Returns:
+            Task view URL for the resource
+        """
+        return f"{self.client.base_url}/app/jspview/react/grc/task-view/{resource_id}"
+        
+    async def resolve_path_to_id(self, path: str, object_type: str = "") -> str:
+        """
+        Resolve a path to a resource ID using the contents API
+        
+        Args:
+            path: Path to resolve (e.g., "/High Oaks Bank/Africa and Middle East/Test Issue #1")
+            object_type: Type of object (e.g., "Issue", "SOXControl")
+            
+        Returns:
+            Resource ID if path was resolved successfully, otherwise returns the original path
+        """
+        # If the path is already a numeric ID, return it as is
+        if path and path.isdigit():
+            return path
+            
+        try:
+            # Format the path for the API call
+            if object_type:
+                formatted_path = f"{object_type}/{path}"
+            else:
+                formatted_path = path
+            encoded_path = urllib.parse.quote(formatted_path, safe='')
+            logger.info(f"Getting content for path: {encoded_path}")
+            
+            # Make GET call to contents API
+            content_result = await self.client.get_content(encoded_path)
+            
+            # Extract the ID from the result
+            if content_result and "id" in content_result:
+                resolved_id = content_result["id"]
+                logger.info(f"Resolved path to ID: {resolved_id}")
+                return resolved_id
+            else:
+                logger.warning(f"Could not resolve path to ID: {path}")
+                return path
+        except Exception as e:
+            logger.error(f"Error resolving path to ID: {e}")
+            # Return the original path if there's an error
+            return path
 
 # Made with Bob

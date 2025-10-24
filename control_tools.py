@@ -111,6 +111,11 @@ class ControlTools(BaseTool):
         description = arguments.get('description', '')
         control_type = "SOXControl"
         
+        # If primaryParentId is provided and not a number, resolve it using the utility function
+        if primaryParentId and not primaryParentId.isdigit():
+            logger.info(f"primaryParentId appears to be a path: {primaryParentId}")
+            primaryParentId = await self.resolve_path_to_id(primaryParentId)
+        
         # Prepare content data
         content_data: dict[str, Any] = {
             "name": name,
@@ -201,7 +206,8 @@ class ControlTools(BaseTool):
                 "Name": name,
                 "Resource ID": resource_id,
                 "Type": control_type,
-                "Parent": primaryParentId
+                "Parent": primaryParentId,
+                "Task-View Path": self.get_task_view_url(resource_id)
             }
             
             if description:
@@ -552,7 +558,8 @@ class ControlTools(BaseTool):
             
             # Use base class method to create response text
             response_items = {
-                "Resource ID": updated_resource_id
+                "Resource ID": updated_resource_id,
+                "Task-View Path": self.get_task_view_url(updated_resource_id)
             }
             
             if name:

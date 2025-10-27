@@ -1,10 +1,10 @@
 # OpenPages Local MCP Server
 
-A local Machine Comprehension Protocol (MCP) server that enables AI agents to securely interact with IBM OpenPages GRC platform through a standardized interface.
+A local Model Context Protocol (MCP) server that enables AI agents to securely interact with IBM OpenPages GRC platform through a standardized interface.
 
 ## Overview
 
-This project provides a local server that implements the Machine Comprehension Protocol (MCP) to interact with IBM OpenPages. It allows AI agents to perform operations on OpenPages objects like issues and controls through a standardized interface.
+This project provides a local server that implements the Model Context Protocol (MCP) to interact with IBM OpenPages. It allows AI agents to perform operations on OpenPages objects like issues and controls through a standardized interface. For more information on MCP, visit [the official documentation](https://modelcontextprotocol.io/docs/getting-started/intro).
 
 ### Architecture
 

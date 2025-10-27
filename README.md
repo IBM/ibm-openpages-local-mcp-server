@@ -120,10 +120,24 @@ For a more user-friendly testing experience, you can use the MCP Inspector UI (r
    - **Arguments**: start_mcp.py
 
 3. Click on "Connect", and the MCP Inspector will start the MCP server and connect to it via STDIO.
+   
+   <img width="1496" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/caf3e170-a7b7-4401-b64a-2d1290faf0c4">
 
-4. Go to the "Tools" tab and click on "List Tools" to see all available tools.
 
-5. Click on any tool, fill in the required fields, and click on "Run Tool" to test the tool and view the results.
+5. Go to the "Tools" tab and click on "List Tools" to see all available tools.
+   
+   <img width="1418" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/2a8b50c1-3ef6-4e5e-9127-f5bdb157b3a2">
+
+
+7. Click on any tool, fill in the required fields, and click on "Run Tool" to test the tool
+   
+   <img width="1503" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/78cea5dc-6357-4bab-a586-c8a2d60417ba">
+
+8. The tool runs and result is fetched
+   
+   <img width="1505" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/129a0ea4-8db5-41ed-b51a-44e6e87ad441">
+
+
 
 ## Available Tools
 
@@ -268,6 +282,12 @@ OPSS-Ctl:Control Type - Administrative
 ```
 Get the Control in openpages with name - Control for business ABCD Corp LTD, and show all the available properties legibly
 ```
+
+### OpenPages Local MCP - WatsxonX Orchestrate High Level Architecture - user flow
+
+<img width="1188" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/57d57f3a-80a7-4ddf-9ba4-f053adc1ad6c">
+
+
 
 ## Security Considerations
 

@@ -4,7 +4,23 @@ A local MCP (Machine Comprehension Protocol) server for IBM OpenPages that can r
 
 ## Overview
 
-This project provides a local server that implements the MCP protocol to interact with IBM OpenPages. It allows AI agents to perform operations on OpenPages objects like issues and controls through a standardized interface.
+This project provides a local server that implements the Machine Comprehension Protocol (MCP) to interact with IBM OpenPages. It allows AI agents to perform operations on OpenPages objects like issues and controls through a standardized interface.
+
+### Architecture
+
+The OpenPages MCP Server is designed to run locally alongside AI agents and communicates with them via Standard Input/Output (STDIO). This architecture offers several advantages:
+
+1. **Local Execution**: The server runs on the same machine as the agent, eliminating the need for remote server deployment and reducing latency.
+
+2. **STDIO Communication**: The server uses STDIO for communication with agents, which is a simple, reliable, and language-agnostic protocol. This allows the server to be easily integrated with various AI agents regardless of their implementation language.
+
+3. **JSON-RPC Protocol**: The server implements the JSON-RPC protocol over STDIO, enabling structured communication between the agent and the server. The agent sends JSON-RPC requests to the server, which processes them and returns JSON-RPC responses.
+
+4. **Secure Connection to OpenPages**: While the server communicates with agents locally via STDIO, it establishes secure connections to the OpenPages instance using authentication credentials (API key or username/password).
+
+5. **Tool-based Interface**: The server exposes a set of tools that agents can use to interact with OpenPages, abstracting away the complexity of the OpenPages API and providing a consistent interface.
+
+This architecture makes the OpenPages MCP Server ideal for integration with various AI agents, including watsonx assistant, Claude Desktop, and other MCP-compatible agents.
 
 ## Features
 
@@ -60,6 +76,8 @@ The following environment variables can be configured in the `.env` file:
 
 ## Usage
 
+### Starting the MCP Server
+
 1) Start the MCP server by CLI:
 
 ```
@@ -72,7 +90,40 @@ For debug mode:
 python start_mcp.py --debug
 ```
 
-2) Test using MCP Inspector
+### Local Testing Options
+
+You can test the MCP server locally using one of the following methods:
+
+#### 1. Using Python CLI with JSON-RPC Requests
+
+You can send JSON-RPC requests directly to the server and receive responses:
+
+Example: List tools JSON-RPC request
+```
+{"method":"tools/list","params":{"_meta":{"progressToken":1}},"jsonrpc":"2.0","id":1}
+```
+
+The response will contain the tools definitions.
+
+#### 2. Using MCP Inspector UI
+
+For a more user-friendly testing experience, you can use the MCP Inspector UI (requires Node.js):
+
+1. Run the following command from the base folder of the MCP Server:
+   ```
+   npx @modelcontextprotocol/inspector@latest
+   ```
+
+2. The MCP Inspector UI will open in your browser. Configure it with the following settings:
+   - **Transport Type**: STDIO
+   - **Command**: Python
+   - **Arguments**: start_mcp.py
+
+3. Click on "Connect", and the MCP Inspector will start the MCP server and connect to it via STDIO.
+
+4. Go to the "Tools" tab and click on "List Tools" to see all available tools.
+
+5. Click on any tool, fill in the required fields, and click on "Run Tool" to test the tool and view the results.
 
 ## Available Tools
 

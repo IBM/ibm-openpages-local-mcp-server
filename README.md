@@ -22,6 +22,8 @@ The OpenPages MCP Server is designed to run locally alongside AI agents and comm
 
 5. **Tool-based Interface**: The server exposes a set of tools that agents can use to interact with OpenPages, abstracting away the complexity of the OpenPages API and providing a consistent interface.
 
+6. **Platform Compatibility**: Some AI platforms, including IBM watsonx.orchestrate, specifically support local MCP servers rather than remote ones. This local architecture ensures compatibility with these platforms, making it the preferred approach for integrating OpenPages with enterprise AI systems.
+
 This architecture makes the OpenPages MCP Server ideal for integration with various AI agents, including watsonx assistant, Claude Desktop, and other MCP-compatible agents.
 
 ## Features
@@ -304,6 +306,28 @@ Get the Control in openpages with name - Control for business ABCD Corp LTD, and
 - Verify your OpenPages connection details
 - Ensure your authentication credentials are correct
 - For SSL certificate issues in development, you can set `SSL_VERIFY=False` (not recommended for production)
+
+## OpenPages MCP Server Roadmap
+
+The OpenPages MCP Server is continuously evolving to provide enhanced capabilities for AI integration with IBM OpenPages. Below is the roadmap outlining planned future developments:
+
+### Current Beta Version
+The current beta version of the OpenPages MCP Server is implemented as a local server with:
+- CRUD operations for key entities (Issues and Controls)
+- Local execution model with STDIO communication
+- Integration with watsonx.orchestrate and other MCP-compatible agents
+
+### Short-term Enhancements
+- **Expanded Entity Support**: Add CRUD operations for additional OpenPages entities such as Risks, Actions, and Assessments
+- **Enhanced Query Capabilities**: Improve filtering, sorting, and relationship traversal in query tools
+- **Use-Case Level Tools**: Develop higher-level tools that encapsulate common business processes and workflows
+
+### Long-term Vision
+- **Remote MCP Server**: Develop support for remote MCP server deployment that can be independently scaled alongside OpenPages instances
+- **HTTP Streaming Communication**: Implement streamable HTTP communication with agents for improved performance and scalability
+- **Advanced Analytics Integration**: Tools for integrating OpenPages data with analytics and reporting capabilities
+
+This roadmap represents our commitment to making OpenPages data and functionality more accessible to AI agents while maintaining security, performance, and usability.
 
 ## License
 

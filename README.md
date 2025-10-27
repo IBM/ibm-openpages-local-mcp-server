@@ -8,6 +8,8 @@ This project provides a local server that implements the Machine Comprehension P
 
 ### Architecture
 
+<img width="1172" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/7bd172b0-282d-4792-bc81-ef971c11bc95">
+
 The OpenPages MCP Server is designed to run locally alongside AI agents and communicates with them via Standard Input/Output (STDIO). This architecture offers several advantages:
 
 1. **Local Execution**: The server runs on the same machine as the agent, eliminating the need for remote server deployment and reducing latency.

@@ -45,7 +45,7 @@ This architecture makes the OpenPages MCP Server ideal for integration with vari
 1. Clone this repository:
    ```
    git clone <repository-url>
-   cd openpages-mcp-server
+   cd grc-mcp-server-beta
    ```
 
 2. Install dependencies:

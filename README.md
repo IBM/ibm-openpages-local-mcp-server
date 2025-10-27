@@ -128,16 +128,16 @@ For a more user-friendly testing experience, you can use the MCP Inspector UI (r
    <img width="1496" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/caf3e170-a7b7-4401-b64a-2d1290faf0c4">
 
 
-5. Go to the "Tools" tab and click on "List Tools" to see all available tools.
+4. Go to the "Tools" tab and click on "List Tools" to see all available tools.
    
    <img width="1418" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/2a8b50c1-3ef6-4e5e-9127-f5bdb157b3a2">
 
 
-7. Click on any tool, fill in the required fields, and click on "Run Tool" to test the tool
+5. Click on any tool, fill in the required fields, and click on "Run Tool" to test the tool
    
    <img width="1503" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/78cea5dc-6357-4bab-a586-c8a2d60417ba">
 
-8. The tool runs and result is fetched
+6. The tool runs and result is fetched
    
    <img width="1505" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/129a0ea4-8db5-41ed-b51a-44e6e87ad441">
 
@@ -202,7 +202,7 @@ The server provides the following MCP tools:
      --tools "*"
    ```
 
-5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. (Note: Someone watsonx tools import will give error like "requests.exceptions.HTTPError: 500 Server Error: Internal Server Error". In such cases, retry with a new toolName)
+5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. (Note: Sometimes watsonx tools import will give error like "requests.exceptions.HTTPError: 500 Server Error: Internal Server Error". In such cases, retry with a new toolName)
 
 ### Creating an Agent with OpenPages MCP Tools
 
@@ -218,11 +218,11 @@ The server provides the following MCP tools:
    ```
    For reasoning or English-language tasks, depend on the LLM's own capabilities to provide answers directly. For openpages Issue/Control creation, such as creating a new Issue(or new Control), call the MCP tools to create the issue (or control) entity in Openpages and return back the created issue (control) details.
    - Use tool openpages-mcp-tools:create_issue to create issue taking the user arguments and showing the created issue details
-   - Use tool openpages-mcp-tools:update_issue to update issue taking the user arguments and showing the upated issue details
+   - Use tool openpages-mcp-tools:update_issue to update issue taking the user arguments and showing the updated issue details
    - Use tool openpages-mcp-tools:query_issues to fetch issues based on any filter conditions
-   - Use tool openpages-mcp-tools:create_control to create issue taking the user arguments and showing the created issue details
-   - Use tool openpages-mcp-tools:update_control to update issue taking the user arguments and showing the upated issue details
-   - Use tool openpages-mcp-tools:query_controls to fetch issues based on any filter conditions
+   - Use tool openpages-mcp-tools:create_control to create control taking the user arguments and showing the created control details
+   - Use tool openpages-mcp-tools:update_control to update control taking the user arguments and showing the updated control details
+   - Use tool openpages-mcp-tools:query_controls to fetch controls based on any filter conditions
 
    Convert the user supplied input into the proper json format as defined in the tool specific schema.
    Start the mcp server and tools only once and use it for all the conversation and don't start the mcp server for each conversation as it will slow down the user's chat experience.
@@ -240,7 +240,7 @@ You can test the agent either from the Preview right pane or by selecting the ag
 ```
 Create an issue in OpenPages with the following details
 Name - Issue for business ABCD Corp LTD
-Description - Mitigting infra risks
+Description - Mitigating infra risks
 Primary parent id - 7599
 OPSS-Iss:Assignee - jayasankar.sreedharan@ibm.com
 OPSS-Iss:Priority - Medium
@@ -265,7 +265,7 @@ Get the issue in openpages with name - Issue for business ABCD Corp LTD and show
 ```
 Create a control in OpenPages with the following details
 Name - Control for business ABCD Corp LTD
-Description - Mitigting infra risks
+Description - Mitigating infra risks
 OPSS-Ctl:Control Owner - jayasankar.sreedharan@ibm.com
 OPSS-Ctl:Design Effectiveness - Not Determined
 OPSS-Ctl:Operating Effectiveness - Effective
@@ -287,7 +287,7 @@ OPSS-Ctl:Control Type - Administrative
 Get the Control in openpages with name - Control for business ABCD Corp LTD, and show all the available properties in bullet points
 ```
 
-### OpenPages Local MCP - WatsxonX Orchestrate High Level Architecture - user flow
+### OpenPages Local MCP - WatsonX Orchestrate High Level Architecture - User Flow
 
 <img width="1188" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/57d57f3a-80a7-4ddf-9ba4-f053adc1ad6c">
 

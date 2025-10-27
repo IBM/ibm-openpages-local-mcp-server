@@ -1,6 +1,6 @@
 # OpenPages Local MCP Server
 
-A local MCP (Machine Comprehension Protocol) server for IBM OpenPages that can run alongside agents like watsonx assistant, Claude Desktop, etc.
+A local Machine Comprehension Protocol (MCP) server that enables AI agents to securely interact with IBM OpenPages GRC platform through a standardized interface.
 
 ## Overview
 
@@ -254,7 +254,7 @@ OPSS-Iss:Issue Type - Control Activity Missing
 
 #### 3. Query Issue (query_issue tool)
 ```
-Get the issue in openpages with name - Issue for business ABCD Corp LTD
+Get the issue in openpages with name - Issue for business ABCD Corp LTD and show the properties in bullet points
 ```
 
 #### 4. Create Control (create_control tool)
@@ -280,7 +280,7 @@ OPSS-Ctl:Control Type - Administrative
 
 #### 6. Query Control (query_control tool)
 ```
-Get the Control in openpages with name - Control for business ABCD Corp LTD, and show all the available properties legibly
+Get the Control in openpages with name - Control for business ABCD Corp LTD, and show all the available properties in bullet points
 ```
 
 ### OpenPages Local MCP - WatsxonX Orchestrate High Level Architecture - user flow

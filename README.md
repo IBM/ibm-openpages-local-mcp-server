@@ -60,7 +60,7 @@ The following environment variables can be configured in the `.env` file:
 
 ## Usage
 
-Start the MCP server:
+1) Start the MCP server by CLI:
 
 ```
 python start_mcp.py
@@ -71,6 +71,8 @@ For debug mode:
 ```
 python start_mcp.py --debug
 ```
+
+2) Test using MCP Inspector
 
 ## Available Tools
 
@@ -131,7 +133,7 @@ The server provides the following MCP tools:
      --tools "*"
    ```
 
-5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance.
+5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. (Note: Someone watsonx tools import will give error like "requests.exceptions.HTTPError: 500 Server Error: Internal Server Error". In such cases, retry with a new toolName)
 
 ### Creating an Agent with OpenPages MCP Tools
 

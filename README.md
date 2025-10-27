@@ -89,6 +89,133 @@ The server provides the following MCP tools:
 ### Utility
 - `echo`: Simple echo tool for testing connectivity
 
+## Integration with IBM watsonX orchestrate
+
+### Prerequisites
+1. OpenPages SaaS instance and an APIKey with OpenPages access
+2. IBM watsonX orchestrate instance and an APIKey with watsonx orchestrate access
+3. A running local environment of watsonx Agent Development Kit (ADK) - Check out the [getting started with ADK tutorial](https://developer.ibm.com/tutorials/getting-started-with-watsonx-orchestrate/) if you don't have an active instance
+4. Read Access to OpenPages MCP Server repo - https://github.ibm.com/OpenPages/grc-mcp-server-beta
+
+### Steps to Import MCP Tools to watsonX orchestrate
+
+1. Checkout the OpenPages MCP Server code to your local machine:
+   ```
+   git clone https://github.ibm.com/OpenPages/grc-mcp-server-beta
+   cd grc-mcp-server-beta
+   ```
+
+2. Create a `.env` file in the base folder by copying the content from `.env.example`:
+   ```
+   cp .env.example .env
+   ```
+
+3. Add the following configuration values in the `.env` file:
+   ```
+   # OpenPages Configuration
+   OPENPAGES_BASE_URL=<Valid OpenPages SaaS URL>
+   OPENPAGES_APIKEY=<APIKey with access to openpages instance>
+   OPENPAGES_AUTHENTICATION_URL=<Auth URL of the OpenPages instance, e.g., https://iam.test.cloud.ibm.com/identity/token for IBM cloud test>
+   OPENPAGES_AUTHENTICATION_TYPE=bearer
+   # Keep other configs as-is
+   ```
+
+4. Load the MCP tools into your watsonx orchestrate instance using the following command (replace placeholders with your values):
+   ```
+   orchestrate toolkits import \
+     --kind mcp \
+     --name "YourOpenPagesToolsName" \
+     --description "MCP tools for OpenPages integration" \
+     --package-root "Base Folder of the OpenPages MCP Server code" \
+     --command '["python3", "start_mcp.py"]' \
+     --tools "*"
+   ```
+
+5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance.
+
+### Creating an Agent with OpenPages MCP Tools
+
+1. In the watsonx Orchestrate "Agent Builder" screen, create a new Agent.
+
+2. Fill in the name and description:
+   - **Name**: IBM OpenPages Agent (or any name you prefer)
+   - **Description**: An intelligent OpenPages agent equipped with tools to perform CRUD operations on key GRC entities such as Issues, Controls, Risks, and Actions. It can create, retrieve, update, and delete records efficiently while ensuring data integrity and adherence to OpenPages data models and business rules.
+
+3. Go to the Toolset section, click "Add tool" to add the MCP tools imported in the previous steps. Add all 6 OpenPages tools.
+
+4. Go to the Behavior section and define how the agent should react to requests with the following instructions:
+   ```
+   For reasoning or English-language tasks, depend on the LLM's own capabilities to provide answers directly. For openpages Issue/Control creation, such as creating a new Issue(or new Control), call the MCP tools to create the issue (or control) entity in Openpages and return back the created issue (control) details.
+   - Use tool openpages-mcp-tools:create_issue to create issue taking the user arguments and showing the created issue details
+   - Use tool openpages-mcp-tools:update_issue to update issue taking the user arguments and showing the upated issue details
+   - Use tool openpages-mcp-tools:query_issues to fetch issues based on any filter conditions
+   - Use tool openpages-mcp-tools:create_control to create issue taking the user arguments and showing the created issue details
+   - Use tool openpages-mcp-tools:update_control to update issue taking the user arguments and showing the upated issue details
+   - Use tool openpages-mcp-tools:query_controls to fetch issues based on any filter conditions
+
+   Convert the user supplied input into the proper json format as defined in the tool specific schema.
+   Start the mcp server and tools only once and use it for all the conversation and don't start the mcp server for each conversation as it will slow down the user's chat experience.
+
+   If the mcp tools integration is erroring, give a clear error message to a technical user on why and how its failing in depth for easy debugging and fixing.
+   ```
+
+5. Deploy the Agent.
+
+### Testing the Agent
+
+You can test the agent either from the Preview right pane or by selecting the agent in the watsonx Orchestrate home page and chatting with it. Here are some sample prompts to test different OpenPages Tools:
+
+#### 1. Create Issue (create_issue tool)
+```
+Create an issue in OpenPages with the following details
+Name - Issue for business ABCD Corp LTD
+Description - Mitigting infra risks
+Primary parent id - 7599
+OPSS-Iss:Assignee - jayasankar.sreedharan@ibm.com
+OPSS-Iss:Priority - Medium
+OPSS-Iss:Status - Open
+OPSS-Iss:Issue Type - Design Effectiveness
+```
+
+#### 2. Update Issue (update_issue tool)
+```
+Update the issue with Resource ID - 11004 and name - Issue for business ABCD Corp LTD, with the following updated properties
+Description - Mitigating infra issues
+OPSS-Iss:Priority - High
+OPSS-Iss:Issue Type - Control Activity Missing
+```
+
+#### 3. Query Issue (query_issue tool)
+```
+Get the issue in openpages with name - Issue for business ABCD Corp LTD
+```
+
+#### 4. Create Control (create_control tool)
+```
+Create a control in OpenPages with the following details
+Name - Control for business ABCD Corp LTD
+Description - Mitigting infra risks
+OPSS-Ctl:Control Owner - jayasankar.sreedharan@ibm.com
+OPSS-Ctl:Design Effectiveness - Not Determined
+OPSS-Ctl:Operating Effectiveness - Effective
+OPSS-Ctl:Control Type - Detective
+OPSS-Ctl:Frequency - Daily
+Primary parent id - 8182
+```
+
+#### 5. Update Control (update_control tool)
+```
+Update the control with Resource ID - 11006 and name - Control for business ABCD Corp LTD, with the following updated properties
+Description - Mitigating infra issues
+OPSS-Ctl:Frequency - Weekly
+OPSS-Ctl:Control Type - Administrative
+```
+
+#### 6. Query Control (query_control tool)
+```
+Get the Control in openpages with name - Control for business ABCD Corp LTD, and show all the available properties legibly
+```
+
 ## Security Considerations
 
 - Store credentials securely and never commit them to version control

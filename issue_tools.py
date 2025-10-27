@@ -236,6 +236,7 @@ class IssueTools(BaseTool):
                 - sort_order: Sort order, "ASC" or "DESC" (default: "ASC")
                 - fields: List of additional fields to include in the output (optional, multiselect)
                   Resource ID, Name, Description, and Status are always included
+                - fetch_all_properties: Whether to fetch all main properties (default: False)
                 
         Returns:
             List of text content with issue information
@@ -245,6 +246,7 @@ class IssueTools(BaseTool):
         status_filter = arguments.get('status_filter')
         limit = arguments.get('limit', 20)
         sort_by = arguments.get('sort_by', [{'field': 'Name', 'order': 'ASC'}])
+        fetch_all_properties = arguments.get('fetch_all_properties', False)
         
         # Handle backward compatibility
         if isinstance(sort_by, str):
@@ -289,6 +291,15 @@ class IssueTools(BaseTool):
                     # Create a simplified name for easier matching
                     simple_name = field_name.split(':')[-1] if ':' in field_name else field_name
                     field_mapping[simple_name] = f'[{field_name}]'
+                    
+            # If fetch_all_properties is True, add all fields from the type definition
+            if fetch_all_properties:
+                for field_def in field_definitions:
+                    field_name = field_def.get('name')
+                    if field_name and not field_def.get('read_only', False):
+                        sql_field = f'[{field_name}]'
+                        if sql_field not in selected_fields:
+                            selected_fields.append(sql_field)
         except Exception as e:
             logger.warning(f"Could not fetch field definitions: {e}. Using default field mapping.")
         
@@ -413,8 +424,15 @@ class IssueTools(BaseTool):
         for issue in issues:
             response_text += f"## {issue.get('Name', 'N/A')}\n"
             
+            # Get the resource ID
+            resource_id = issue.get('Resource ID', 'N/A')
+            
             # Always show required fields first
-            response_text += f"- **ID**: {issue.get('Resource ID', 'N/A')}\n"
+            response_text += f"- **ID**: {resource_id}\n"
+            
+            # Add taskview link
+            if resource_id != 'N/A':
+                response_text += f"- **Task-View Path**: {self.get_task_view_url(resource_id)}\n"
             
             # Status might be returned with different field names depending on the query
             status_value = issue.get('Status', issue.get('OPSS-Iss:Status', 'N/A'))

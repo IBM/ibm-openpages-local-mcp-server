@@ -235,6 +235,7 @@ class ControlTools(BaseTool):
                 - sort_order: Sort order, "ASC" or "DESC" (default: "ASC")
                 - fields: List of additional fields to include in the output (optional, multiselect)
                   Resource ID, Name, Description, and Status are always included
+                - fetch_all_properties: Whether to fetch all main properties (default: False)
                 
         Returns:
             List of text content with controls information
@@ -244,6 +245,7 @@ class ControlTools(BaseTool):
         status_filter = arguments.get('status_filter')
         limit = arguments.get('limit', 20)
         sort_by = arguments.get('sort_by', [{'field': 'Name', 'order': 'ASC'}])
+        fetch_all_properties = arguments.get('fetch_all_properties', False)
         
         # Handle backward compatibility
         if isinstance(sort_by, str):
@@ -276,6 +278,15 @@ class ControlTools(BaseTool):
             
             # Use base class method to create field mapping
             field_mapping = self.create_field_mapping(field_definitions)
+            
+            # If fetch_all_properties is True, add all fields from the type definition
+            if fetch_all_properties:
+                for field_def in field_definitions:
+                    field_name = field_def.get('name')
+                    if field_name and not field_def.get('read_only', False):
+                        sql_field = f'[{field_name}]'
+                        if sql_field not in selected_fields:
+                            selected_fields.append(sql_field)
         except Exception as e:
             logger.warning(f"Could not fetch field definitions: {e}. Using default field mapping.")
             field_mapping = {}
@@ -396,8 +407,15 @@ class ControlTools(BaseTool):
             # Create a dictionary for the control items to display
             control_items = {}
             
+            # Get the resource ID
+            resource_id = control.get('Resource ID', 'N/A')
+            
             # Always show required fields first
-            control_items["ID"] = control.get('Resource ID', 'N/A')
+            control_items["ID"] = resource_id
+            
+            # Add taskview link
+            if resource_id != 'N/A':
+                control_items["Task-View Path"] = self.get_task_view_url(resource_id)
             
             # Status might be returned with different field names depending on the query
             status_value = control.get('Status', control.get('OPSS-Ctl:Status', 'N/A'))

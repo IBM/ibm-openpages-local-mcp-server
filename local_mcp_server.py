@@ -470,6 +470,10 @@ class LocalMCPServer:
                     "minimum": 1,
                     "maximum": 100
                 },
+                "fetch_all_properties": {
+                    "type": "boolean",
+                    "description": f"Whether to fetch all main properties of the {object_label} (default: False)"
+                },
                 "fields": {
                     "type": "array",
                     "items": {
@@ -723,6 +727,10 @@ class LocalMCPServer:
                     "description": f"Maximum number of {object_label} to return (default: 20)",
                     "minimum": 1,
                     "maximum": 100
+                },
+                "fetch_all_properties": {
+                    "type": "boolean",
+                    "description": f"Whether to fetch all main properties of the {object_label} (default: False)"
                 },
                 "sort_by": {
                     "type": "string",

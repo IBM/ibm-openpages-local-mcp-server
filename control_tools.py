@@ -593,3 +593,62 @@ class ControlTools(BaseTool):
         except Exception as e:
             logger.error(f"Error updating control: {e}")
             return [TextContent(type="text", text=f"Error updating control: {str(e)}")]
+    
+    async def delete_control(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """
+        Delete an existing control in OpenPages
+        
+        Args:
+            arguments: Tool arguments
+                - resource_id: Resource ID of the control to delete
+                - path: Path of the control including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Control #1)
+                
+        Returns:
+            List of text content with deletion confirmation
+        """
+        # Extract required fields
+        resource_id = arguments.get('resource_id')
+        path = arguments.get('path')
+        
+        if not resource_id and not path:
+            return [TextContent(type="text", text="Error: Resource ID or path is required")]
+        
+        if resource_id and path:
+            return [TextContent(type="text", text="Error: Only one of resource ID or path is required")]
+        
+        object_id = resource_id
+        if not object_id:
+            object_id = f"Controls/{path}"
+            object_id = urllib.parse.quote(object_id, safe='')
+        
+        try:
+            # Get control details before deletion for confirmation message
+            control_info = {}
+            try:
+                control_data = await self.client.get_content(object_id)
+                if control_data:
+                    control_info = {
+                        "Name": control_data.get("name", "Unknown"),
+                        "Resource ID": control_data.get("id", object_id)
+                    }
+            except Exception as e:
+                logger.warning(f"Could not retrieve control details before deletion: {e}")
+                # Continue with deletion even if we couldn't get details
+            
+            # Delete the control
+            logger.info(f"Deleting control with ID: {object_id}")
+            result = await self.client.delete_content(object_id)
+            
+            # Create response text
+            if control_info:
+                response_items = control_info
+            else:
+                response_items = {"Resource ID": object_id}
+                
+            response_text = self.create_response_text("Successfully deleted control:", response_items)
+            
+            return [TextContent(type="text", text=response_text)]
+        
+        except Exception as e:
+            logger.error(f"Error deleting control: {e}")
+            return [TextContent(type="text", text=f"Error deleting control: {str(e)}")]

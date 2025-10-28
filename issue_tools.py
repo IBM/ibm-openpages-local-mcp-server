@@ -614,3 +614,63 @@ class IssueTools(BaseTool):
         except Exception as e:
             logger.error(f"Error updating issue: {e}")
             return [TextContent(type="text", text=f"Error updating issue: {str(e)}")]
+    
+    async def delete_issue(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """
+        Delete an existing issue in OpenPages
+        
+        Args:
+            arguments: Tool arguments
+                - resource_id: Resource ID of the issue to delete
+                - path: Path of the issue including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Issue #1)
+                
+        Returns:
+            List of text content with deletion confirmation
+        """
+        # Extract required fields
+        resource_id = arguments.get('resource_id')
+        path = arguments.get('path')
+        
+        if not resource_id and not path:
+            return [TextContent(type="text", text="Error: Resource ID or path is required")]
+        
+        if resource_id and path:
+            return [TextContent(type="text", text="Error: Only one of resource ID or path is required")]
+        
+        object_id = resource_id
+        if not object_id:
+            object_id = f"Issue/{path}"
+            object_id = urllib.parse.quote(object_id, safe='')
+        
+        try:
+            # Get issue details before deletion for confirmation message
+            issue_info = {}
+            try:
+                issue_data = await self.client.get_content(object_id)
+                if issue_data:
+                    issue_info = {
+                        "Name": issue_data.get("name", "Unknown"),
+                        "Resource ID": issue_data.get("id", object_id)
+                    }
+            except Exception as e:
+                logger.warning(f"Could not retrieve issue details before deletion: {e}")
+                # Continue with deletion even if we couldn't get details
+            
+            # Delete the issue
+            logger.info(f"Deleting issue with ID: {object_id}")
+            result = await self.client.delete_content(object_id)
+            
+            # Create response text
+            response_text = f"Successfully deleted issue:\n\n"
+            
+            if issue_info:
+                response_text += f"- **Name**: {issue_info.get('Name', 'Unknown')}\n"
+                response_text += f"- **Resource ID**: {issue_info.get('Resource ID', object_id)}\n"
+            else:
+                response_text += f"- **Resource ID**: {object_id}\n"
+            
+            return [TextContent(type="text", text=response_text)]
+        
+        except Exception as e:
+            logger.error(f"Error deleting issue: {e}")
+            return [TextContent(type="text", text=f"Error deleting issue: {str(e)}")]

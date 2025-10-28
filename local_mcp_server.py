@@ -926,6 +926,36 @@ class LocalMCPServer:
             "result": [{"type": "text", "text": item.text} for item in result]
         }
     
+    async def _handle_delete_control_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle the delete_control tool
+        
+        Args:
+            arguments: Tool arguments containing control details to delete
+            
+        Returns:
+            Dict containing the tool execution result
+        """
+        result = await self.control_tools.delete_control(arguments)
+        return {
+            "result": [{"type": "text", "text": item.text} for item in result]
+        }
+    
+    async def _handle_delete_issue_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Handle the delete_issue tool
+        
+        Args:
+            arguments: Tool arguments containing issue details to delete
+            
+        Returns:
+            Dict containing the tool execution result
+        """
+        result = await self.issue_tools.delete_issue(arguments)
+        return {
+            "result": [{"type": "text", "text": item.text} for item in result]
+        }
+    
     async def handle_call_tool(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
         Handle call_tool request from the client
@@ -959,8 +989,10 @@ class LocalMCPServer:
                 "create_issue": self._handle_create_issue_tool,
                 "query_issues": self._handle_query_issues_tool,
                 "update_issue": self._handle_update_issue_tool,
+                "delete_issue": self._handle_delete_issue_tool,
                 "create_control": self._handle_create_control_tool,
                 "update_control": self._handle_update_control_tool,
+                "delete_control": self._handle_delete_control_tool,
                 "query_controls": self._handle_query_controls_tool
             }
             

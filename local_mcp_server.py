@@ -403,6 +403,15 @@ class LocalMCPServer:
                 "description": field.get("description") or f"Field: {field_name}"
             }
             
+            # Add label information
+            label = field.get("localized_label")
+            if label:
+                # Add label as metadata that can be used by the LLM
+                prop_def["x-label"] = label
+                
+                # Include label in the description for better context
+                prop_def["description"] = f"{label} ({field_name}): {prop_def['description']}"
+            
             # Add format if applicable
             if json_format:
                 prop_def["format"] = json_format

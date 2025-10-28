@@ -132,16 +132,44 @@ class ControlTools(BaseTool):
             type_info = await self.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
-            # Create a mapping of field names to their definitions for easy lookup
-            field_def_map = {}
+            # Create mappings for field names and labels
+            field_def_map = {}  # Maps field names to definitions (case-sensitive)
+            field_def_map_lower = {}  # Maps lowercase field names to definitions (case-insensitive)
+            label_to_field_map = {}  # Maps lowercase labels to field names
+            simple_name_map = {}  # Maps lowercase simple names to field names
+            conflict_map = {}  # Tracks potential conflicts
+            
             for field_def in field_definitions:
                 field_name = field_def.get('name')
                 if field_name:
+                    # 1. Map full field name to definition (case-sensitive)
                     field_def_map[field_name] = field_def
                     
-                    # Also map the field name without the prefix for easier matching
+                    # Also map lowercase version for case-insensitive matching
+                    field_name_lower = field_name.lower()
+                    if field_name_lower in field_def_map_lower:
+                        conflict_map[field_name_lower] = True
+                        logger.warning(f"Field name conflict: '{field_name_lower}' maps to multiple fields")
+                    field_def_map_lower[field_name_lower] = field_def
+                    
+                    # 2. Get user-friendly label and map it to field name (case-insensitive)
+                    label = field_def.get('localized_label')
+                    if label:
+                        label_lower = label.lower()
+                        if label_lower in label_to_field_map:
+                            conflict_map[label_lower] = True
+                            logger.warning(f"Label conflict: '{label}' maps to both '{label_to_field_map[label_lower]}' and '{field_name}'")
+                        else:
+                            label_to_field_map[label_lower] = field_name
+                    
+                    # 3. Map simple name (without prefix) to field name (case-insensitive)
                     simple_name = field_name.split(':')[-1] if ':' in field_name else field_name
-                    field_def_map[simple_name.lower()] = field_def
+                    simple_name_lower = simple_name.lower()
+                    if simple_name_lower in simple_name_map:
+                        conflict_map[simple_name_lower] = True
+                        logger.warning(f"Simple name conflict: '{simple_name}' maps to both '{simple_name_map[simple_name_lower]}' and '{field_name}'")
+                    else:
+                        simple_name_map[simple_name_lower] = field_name
             
             # Process all arguments and map them to OpenPages fields
             for arg_name, arg_value in arguments.items():
@@ -155,13 +183,52 @@ class ControlTools(BaseTool):
                 
                 # Try to find the matching field definition
                 field_def = None
+                field_name = None
+                arg_name_lower = arg_name.lower()
                 
-                # First try direct match
+                # 1. First try direct match with full field name (case-sensitive)
                 if arg_name in field_def_map:
                     field_def = field_def_map[arg_name]
-                # Then try lowercase match
-                elif arg_name.lower() in field_def_map:
-                    field_def = field_def_map[arg_name.lower()]
+                    field_name = arg_name
+                    logger.debug(f"Field '{arg_name}' matched by exact name")
+                
+                # 2. Try case-insensitive match with full field name
+                elif arg_name_lower in field_def_map_lower:
+                    # Check if this is a conflicted field name
+                    if arg_name_lower in conflict_map:
+                        logger.warning(f"Using ambiguous field name: '{arg_name}' has multiple possible matches")
+                        # In case of conflict, prefer the exact match if available
+                        for actual_name in field_def_map:
+                            if actual_name.lower() == arg_name_lower:
+                                field_name = actual_name
+                                field_def = field_def_map[actual_name]
+                                logger.debug(f"Ambiguous field '{arg_name}' resolved to exact match '{field_name}'")
+                                break
+                        # If no exact match found, use the first one
+                        if not field_name:
+                            field_def = field_def_map_lower[arg_name_lower]
+                            field_name = field_def.get('name')
+                            logger.debug(f"Ambiguous field '{arg_name}' using first match '{field_name}'")
+                    else:
+                        field_def = field_def_map_lower[arg_name_lower]
+                        field_name = field_def.get('name')
+                        logger.debug(f"Field '{arg_name}' matched by case-insensitive name to '{field_name}'")
+                
+                # 3. Try match with user-friendly label (case-insensitive)
+                elif arg_name_lower in label_to_field_map:
+                    if arg_name_lower in conflict_map:
+                        logger.warning(f"Ambiguous label: '{arg_name}' could refer to multiple fields")
+                    field_name = label_to_field_map[arg_name_lower]
+                    field_def = field_def_map.get(field_name)
+                    logger.debug(f"Field '{arg_name}' matched by label to '{field_name}'")
+                
+                # 4. Try match with simple name (without prefix) (case-insensitive)
+                elif arg_name_lower in simple_name_map:
+                    if arg_name_lower in conflict_map:
+                        logger.warning(f"Ambiguous simple name: '{arg_name}' could refer to multiple fields")
+                    field_name = simple_name_map[arg_name_lower]
+                    field_def = field_def_map.get(field_name)
+                    logger.debug(f"Field '{arg_name}' matched by simple name to '{field_name}'")
                 
                 if field_def:
                     field_name = field_def.get('name')
@@ -505,16 +572,44 @@ class ControlTools(BaseTool):
             type_info = await self.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
-            # Create a mapping of field names to their definitions for easy lookup
-            field_def_map = {}
+            # Create mappings for field names and labels
+            field_def_map = {}  # Maps field names to definitions (case-sensitive)
+            field_def_map_lower = {}  # Maps lowercase field names to definitions (case-insensitive)
+            label_to_field_map = {}  # Maps lowercase labels to field names
+            simple_name_map = {}  # Maps lowercase simple names to field names
+            conflict_map = {}  # Tracks potential conflicts
+            
             for field_def in field_definitions:
                 field_name = field_def.get('name')
                 if field_name:
+                    # 1. Map full field name to definition (case-sensitive)
                     field_def_map[field_name] = field_def
                     
-                    # Also map the field name without the prefix for easier matching
+                    # Also map lowercase version for case-insensitive matching
+                    field_name_lower = field_name.lower()
+                    if field_name_lower in field_def_map_lower:
+                        conflict_map[field_name_lower] = True
+                        logger.warning(f"Field name conflict: '{field_name_lower}' maps to multiple fields")
+                    field_def_map_lower[field_name_lower] = field_def
+                    
+                    # 2. Get user-friendly label and map it to field name (case-insensitive)
+                    label = field_def.get('localized_label')
+                    if label:
+                        label_lower = label.lower()
+                        if label_lower in label_to_field_map:
+                            conflict_map[label_lower] = True
+                            logger.warning(f"Label conflict: '{label}' maps to both '{label_to_field_map[label_lower]}' and '{field_name}'")
+                        else:
+                            label_to_field_map[label_lower] = field_name
+                    
+                    # 3. Map simple name (without prefix) to field name (case-insensitive)
                     simple_name = field_name.split(':')[-1] if ':' in field_name else field_name
-                    field_def_map[simple_name.lower()] = field_def
+                    simple_name_lower = simple_name.lower()
+                    if simple_name_lower in simple_name_map:
+                        conflict_map[simple_name_lower] = True
+                        logger.warning(f"Simple name conflict: '{simple_name}' maps to both '{simple_name_map[simple_name_lower]}' and '{field_name}'")
+                    else:
+                        simple_name_map[simple_name_lower] = field_name
             
             # Process all arguments and map them to OpenPages fields
             for arg_name, arg_value in arguments.items():
@@ -528,13 +623,24 @@ class ControlTools(BaseTool):
                 
                 # Try to find the matching field definition
                 field_def = None
+                field_name = None
+                arg_name_lower = arg_name.lower()
                 
                 # First try direct match
                 if arg_name in field_def_map:
                     field_def = field_def_map[arg_name]
-                # Then try lowercase match
-                elif arg_name.lower() in field_def_map:
-                    field_def = field_def_map[arg_name.lower()]
+                    field_name = arg_name
+                    logger.debug(f"Field '{arg_name}' matched by exact name")
+                # Then try label match (NEW in Phase 2)
+                elif arg_name_lower in label_to_field_map:
+                    field_name = label_to_field_map[arg_name_lower]
+                    field_def = field_def_map.get(field_name)
+                    logger.debug(f"Field '{arg_name}' matched by label to '{field_name}'")
+                # Then try lowercase match (existing fallback)
+                elif arg_name_lower in field_def_map:
+                    field_def = field_def_map[arg_name_lower]
+                    field_name = field_def.get('name')
+                    logger.debug(f"Field '{arg_name}' matched by case-insensitive name to '{field_name}'")
                 
                 if field_def:
                     field_name = field_def.get('name')

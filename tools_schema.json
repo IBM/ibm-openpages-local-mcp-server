@@ -158,5 +158,39 @@
                 }
             }
         }
+    },
+    {
+        "name": "delete_control",
+        "description": "Delete an existing control in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "resource_id": {
+                    "type": "string",
+                    "description": "Resource ID of the control to delete. (Note: Either Resource_ID or Path is required.)"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Path of the control including the name. (Note: Either Resource_ID or Path is required.)"
+                }
+            }
+        }
+    },
+    {
+        "name": "delete_issue",
+        "description": "Delete an existing issue in OpenPages",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "resource_id": {
+                    "type": "string",
+                    "description": "Resource ID of the issue to delete. (Note: Either Resource_ID or Path is required.)"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "Path of the issue including the name. (Note: Either Resource_ID or Path is required.)"
+                }
+            }
+        }
     }
 ]

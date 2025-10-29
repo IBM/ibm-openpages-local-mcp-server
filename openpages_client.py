@@ -489,5 +489,64 @@ class OpenPagesClient:
                 # Network-related errors
                 logger.error(f"Request error getting type definition: {e}")
                 raise
+    
+    async def delete_content(self, resource_id: str) -> Dict[str, Any]:
+        """
+        Delete content from OpenPages
+        
+        Args:
+            resource_id: Resource ID of the content to delete
+            
+        Returns:
+            Response data from the delete operation
+        """
+        # Ensure authentication is initialized
+        await self.initialize_auth()
+        
+        url = f"{self.base_url}/opgrc/api/v2/contents/{resource_id}"
+        logger.info(f"OpenPages API Delete Content Request: {url}")
+        
+        # Use SSL verification setting from config
+        if not self.settings.SSL_VERIFY:
+            logger.warning("SSL verification is disabled. This is not recommended for production environments.")
+            
+        async with httpx.AsyncClient(verify=self.settings.SSL_VERIFY) as client:
+            try:
+                response = await client.delete(
+                    url,
+                    headers=self.headers,
+                    timeout=30.0
+                )
+                response.raise_for_status()
+                
+                # For DELETE operations, the response might be empty
+                if response.text:
+                    response_json = response.json()
+                else:
+                    response_json = {"status": "success", "message": "Content deleted successfully"}
+                
+                # Log the response
+                if self.settings.DEBUG:
+                    logger.info(f"OpenPages API Delete Content Response Status: {response.status_code}")
+                    if response.text:
+                        response_str = str(response_json)
+                        if len(response_str) > 1000:
+                            logger.info(f"Response Body (truncated): {response_str[:1000]}...")
+                        else:
+                            logger.info(f"Response Body: {response_json}")
+                    else:
+                        logger.info("Response Body: Empty (successful deletion)")
+                
+                return response_json
+            except httpx.HTTPStatusError as e:
+                # This exception has response attribute
+                logger.error(f"HTTP status error deleting content: {e}")
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+                raise
+            except httpx.RequestError as e:
+                # Network-related errors
+                logger.error(f"Request error deleting content: {e}")
+                raise
 
 # Made with Bob

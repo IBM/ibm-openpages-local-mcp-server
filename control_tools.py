@@ -132,16 +132,44 @@ class ControlTools(BaseTool):
             type_info = await self.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
-            # Create a mapping of field names to their definitions for easy lookup
-            field_def_map = {}
+            # Create mappings for field names and labels
+            field_def_map = {}  # Maps field names to definitions (case-sensitive)
+            field_def_map_lower = {}  # Maps lowercase field names to definitions (case-insensitive)
+            label_to_field_map = {}  # Maps lowercase labels to field names
+            simple_name_map = {}  # Maps lowercase simple names to field names
+            conflict_map = {}  # Tracks potential conflicts
+            
             for field_def in field_definitions:
                 field_name = field_def.get('name')
                 if field_name:
+                    # 1. Map full field name to definition (case-sensitive)
                     field_def_map[field_name] = field_def
                     
-                    # Also map the field name without the prefix for easier matching
+                    # Also map lowercase version for case-insensitive matching
+                    field_name_lower = field_name.lower()
+                    if field_name_lower in field_def_map_lower:
+                        conflict_map[field_name_lower] = True
+                        logger.warning(f"Field name conflict: '{field_name_lower}' maps to multiple fields")
+                    field_def_map_lower[field_name_lower] = field_def
+                    
+                    # 2. Get user-friendly label and map it to field name (case-insensitive)
+                    label = field_def.get('localized_label')
+                    if label:
+                        label_lower = label.lower()
+                        if label_lower in label_to_field_map:
+                            conflict_map[label_lower] = True
+                            logger.warning(f"Label conflict: '{label}' maps to both '{label_to_field_map[label_lower]}' and '{field_name}'")
+                        else:
+                            label_to_field_map[label_lower] = field_name
+                    
+                    # 3. Map simple name (without prefix) to field name (case-insensitive)
                     simple_name = field_name.split(':')[-1] if ':' in field_name else field_name
-                    field_def_map[simple_name.lower()] = field_def
+                    simple_name_lower = simple_name.lower()
+                    if simple_name_lower in simple_name_map:
+                        conflict_map[simple_name_lower] = True
+                        logger.warning(f"Simple name conflict: '{simple_name}' maps to both '{simple_name_map[simple_name_lower]}' and '{field_name}'")
+                    else:
+                        simple_name_map[simple_name_lower] = field_name
             
             # Process all arguments and map them to OpenPages fields
             for arg_name, arg_value in arguments.items():
@@ -155,13 +183,52 @@ class ControlTools(BaseTool):
                 
                 # Try to find the matching field definition
                 field_def = None
+                field_name = None
+                arg_name_lower = arg_name.lower()
                 
-                # First try direct match
+                # 1. First try direct match with full field name (case-sensitive)
                 if arg_name in field_def_map:
                     field_def = field_def_map[arg_name]
-                # Then try lowercase match
-                elif arg_name.lower() in field_def_map:
-                    field_def = field_def_map[arg_name.lower()]
+                    field_name = arg_name
+                    logger.debug(f"Field '{arg_name}' matched by exact name")
+                
+                # 2. Try case-insensitive match with full field name
+                elif arg_name_lower in field_def_map_lower:
+                    # Check if this is a conflicted field name
+                    if arg_name_lower in conflict_map:
+                        logger.warning(f"Using ambiguous field name: '{arg_name}' has multiple possible matches")
+                        # In case of conflict, prefer the exact match if available
+                        for actual_name in field_def_map:
+                            if actual_name.lower() == arg_name_lower:
+                                field_name = actual_name
+                                field_def = field_def_map[actual_name]
+                                logger.debug(f"Ambiguous field '{arg_name}' resolved to exact match '{field_name}'")
+                                break
+                        # If no exact match found, use the first one
+                        if not field_name:
+                            field_def = field_def_map_lower[arg_name_lower]
+                            field_name = field_def.get('name')
+                            logger.debug(f"Ambiguous field '{arg_name}' using first match '{field_name}'")
+                    else:
+                        field_def = field_def_map_lower[arg_name_lower]
+                        field_name = field_def.get('name')
+                        logger.debug(f"Field '{arg_name}' matched by case-insensitive name to '{field_name}'")
+                
+                # 3. Try match with user-friendly label (case-insensitive)
+                elif arg_name_lower in label_to_field_map:
+                    if arg_name_lower in conflict_map:
+                        logger.warning(f"Ambiguous label: '{arg_name}' could refer to multiple fields")
+                    field_name = label_to_field_map[arg_name_lower]
+                    field_def = field_def_map.get(field_name)
+                    logger.debug(f"Field '{arg_name}' matched by label to '{field_name}'")
+                
+                # 4. Try match with simple name (without prefix) (case-insensitive)
+                elif arg_name_lower in simple_name_map:
+                    if arg_name_lower in conflict_map:
+                        logger.warning(f"Ambiguous simple name: '{arg_name}' could refer to multiple fields")
+                    field_name = simple_name_map[arg_name_lower]
+                    field_def = field_def_map.get(field_name)
+                    logger.debug(f"Field '{arg_name}' matched by simple name to '{field_name}'")
                 
                 if field_def:
                     field_name = field_def.get('name')
@@ -505,16 +572,44 @@ class ControlTools(BaseTool):
             type_info = await self.get_type_definition(control_type)
             field_definitions = type_info.get('field_definitions', [])
             
-            # Create a mapping of field names to their definitions for easy lookup
-            field_def_map = {}
+            # Create mappings for field names and labels
+            field_def_map = {}  # Maps field names to definitions (case-sensitive)
+            field_def_map_lower = {}  # Maps lowercase field names to definitions (case-insensitive)
+            label_to_field_map = {}  # Maps lowercase labels to field names
+            simple_name_map = {}  # Maps lowercase simple names to field names
+            conflict_map = {}  # Tracks potential conflicts
+            
             for field_def in field_definitions:
                 field_name = field_def.get('name')
                 if field_name:
+                    # 1. Map full field name to definition (case-sensitive)
                     field_def_map[field_name] = field_def
                     
-                    # Also map the field name without the prefix for easier matching
+                    # Also map lowercase version for case-insensitive matching
+                    field_name_lower = field_name.lower()
+                    if field_name_lower in field_def_map_lower:
+                        conflict_map[field_name_lower] = True
+                        logger.warning(f"Field name conflict: '{field_name_lower}' maps to multiple fields")
+                    field_def_map_lower[field_name_lower] = field_def
+                    
+                    # 2. Get user-friendly label and map it to field name (case-insensitive)
+                    label = field_def.get('localized_label')
+                    if label:
+                        label_lower = label.lower()
+                        if label_lower in label_to_field_map:
+                            conflict_map[label_lower] = True
+                            logger.warning(f"Label conflict: '{label}' maps to both '{label_to_field_map[label_lower]}' and '{field_name}'")
+                        else:
+                            label_to_field_map[label_lower] = field_name
+                    
+                    # 3. Map simple name (without prefix) to field name (case-insensitive)
                     simple_name = field_name.split(':')[-1] if ':' in field_name else field_name
-                    field_def_map[simple_name.lower()] = field_def
+                    simple_name_lower = simple_name.lower()
+                    if simple_name_lower in simple_name_map:
+                        conflict_map[simple_name_lower] = True
+                        logger.warning(f"Simple name conflict: '{simple_name}' maps to both '{simple_name_map[simple_name_lower]}' and '{field_name}'")
+                    else:
+                        simple_name_map[simple_name_lower] = field_name
             
             # Process all arguments and map them to OpenPages fields
             for arg_name, arg_value in arguments.items():
@@ -528,13 +623,24 @@ class ControlTools(BaseTool):
                 
                 # Try to find the matching field definition
                 field_def = None
+                field_name = None
+                arg_name_lower = arg_name.lower()
                 
                 # First try direct match
                 if arg_name in field_def_map:
                     field_def = field_def_map[arg_name]
-                # Then try lowercase match
-                elif arg_name.lower() in field_def_map:
-                    field_def = field_def_map[arg_name.lower()]
+                    field_name = arg_name
+                    logger.debug(f"Field '{arg_name}' matched by exact name")
+                # Then try label match (NEW in Phase 2)
+                elif arg_name_lower in label_to_field_map:
+                    field_name = label_to_field_map[arg_name_lower]
+                    field_def = field_def_map.get(field_name)
+                    logger.debug(f"Field '{arg_name}' matched by label to '{field_name}'")
+                # Then try lowercase match (existing fallback)
+                elif arg_name_lower in field_def_map:
+                    field_def = field_def_map[arg_name_lower]
+                    field_name = field_def.get('name')
+                    logger.debug(f"Field '{arg_name}' matched by case-insensitive name to '{field_name}'")
                 
                 if field_def:
                     field_name = field_def.get('name')
@@ -593,3 +699,62 @@ class ControlTools(BaseTool):
         except Exception as e:
             logger.error(f"Error updating control: {e}")
             return [TextContent(type="text", text=f"Error updating control: {str(e)}")]
+    
+    async def delete_control(self, arguments: Dict[str, Any]) -> List[TextContent]:
+        """
+        Delete an existing control in OpenPages
+        
+        Args:
+            arguments: Tool arguments
+                - resource_id: Resource ID of the control to delete
+                - path: Path of the control including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Control #1)
+                
+        Returns:
+            List of text content with deletion confirmation
+        """
+        # Extract required fields
+        resource_id = arguments.get('resource_id')
+        path = arguments.get('path')
+        
+        if not resource_id and not path:
+            return [TextContent(type="text", text="Error: Resource ID or path is required")]
+        
+        if resource_id and path:
+            return [TextContent(type="text", text="Error: Only one of resource ID or path is required")]
+        
+        object_id = resource_id
+        if not object_id:
+            object_id = f"Controls/{path}"
+            object_id = urllib.parse.quote(object_id, safe='')
+        
+        try:
+            # Get control details before deletion for confirmation message
+            control_info = {}
+            try:
+                control_data = await self.client.get_content(object_id)
+                if control_data:
+                    control_info = {
+                        "Name": control_data.get("name", "Unknown"),
+                        "Resource ID": control_data.get("id", object_id)
+                    }
+            except Exception as e:
+                logger.warning(f"Could not retrieve control details before deletion: {e}")
+                # Continue with deletion even if we couldn't get details
+            
+            # Delete the control
+            logger.info(f"Deleting control with ID: {object_id}")
+            result = await self.client.delete_content(object_id)
+            
+            # Create response text
+            if control_info:
+                response_items = control_info
+            else:
+                response_items = {"Resource ID": object_id}
+                
+            response_text = self.create_response_text("Successfully deleted control:", response_items)
+            
+            return [TextContent(type="text", text=response_text)]
+        
+        except Exception as e:
+            logger.error(f"Error deleting control: {e}")
+            return [TextContent(type="text", text=f"Error deleting control: {str(e)}")]

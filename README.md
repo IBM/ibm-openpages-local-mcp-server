@@ -202,7 +202,10 @@ The server provides the following MCP tools:
      --tools "*"
    ```
 
-5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. (Note: Sometimes watsonx tools import will give error like "requests.exceptions.HTTPError: 500 Server Error: Internal Server Error". In such cases, retry with a new toolName)
+5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. 
+```
+(Note: Sometimes watsonx tools import will give error like "requests.exceptions.HTTPError: 500 Server Error: Internal Server Error". In such cases, retry with a new toolName). If still retry fails, then remove the contents of requirements.txt and save it and again perform the tool import with a new name.
+```
 
 ### Creating an Agent with OpenPages MCP Tools
 
@@ -216,18 +219,41 @@ The server provides the following MCP tools:
 
 4. Go to the Behavior section and define how the agent should react to requests with the following instructions:
    ```
-   For reasoning or English-language tasks, depend on the LLM's own capabilities to provide answers directly. For openpages Issue/Control creation, such as creating a new Issue(or new Control), call the MCP tools to create the issue (or control) entity in Openpages and return back the created issue (control) details.
-   - Use tool openpages-mcp-tools:create_issue to create issue taking the user arguments and showing the created issue details
-   - Use tool openpages-mcp-tools:update_issue to update issue taking the user arguments and showing the updated issue details
-   - Use tool openpages-mcp-tools:query_issues to fetch issues based on any filter conditions
-   - Use tool openpages-mcp-tools:create_control to create control taking the user arguments and showing the created control details
-   - Use tool openpages-mcp-tools:update_control to update control taking the user arguments and showing the updated control details
-   - Use tool openpages-mcp-tools:query_controls to fetch controls based on any filter conditions
+   For OpenPages operations:
+- Use openpages-mcp-tools:create_issue, update_issue, query_issues for issue management
+- Use openpages-mcp-tools:create_control, update_control, query_controls for control management
+- Format user input according to tool schema requirements
 
-   Convert the user supplied input into the proper json format as defined in the tool specific schema.
-   Start the mcp server and tools only once and use it for all the conversation and don't start the mcp server for each conversation as it will slow down the user's chat experience.
+Field name handling when working with OpenPages fields:
 
-   If the mcp tools integration is erroring, give a clear error message to a technical user on why and how its failing in depth for easy debugging and fixing.
+1. Field Naming Conventions:
+   - Full technical field name: The complete identifier with prefix (e.g., "OPSS-Ctl:Status")
+   - User-friendly label: The human-readable name (e.g., "Status") found in the schema as x-label
+   - Simple name: The field name without prefix (e.g., "Status")
+
+2. Field Name Resolution:
+   - Users will typically provide the user-friendly label
+   - Always convert user-provided labels to the appropriate full technical field name when passing to MCP tools
+   - Use the following resolution order:
+     a. Exact match with full technical field name
+     b. Case-insensitive match with full technical field name
+     c. Match with user-friendly label
+     d. Match with simple name (without prefix)
+
+3. Handling Ambiguity:
+   - If a label is ambiguous (could refer to multiple fields):
+     a. Inform the user about the ambiguity
+     b. List the possible full technical field names that match
+     c. Ask the user to specify which full technical field name they want to use
+   - Example: "The label 'Status' is ambiguous and could refer to multiple fields: 'OPSS-Ctl:Status' or 'OPSS-Iss:Status'. Please specify which field you want to use."
+
+4. Feedback:
+   - When resolving field names, provide transparent feedback about which technical field is being used
+   - Example: "Using field 'OPSS-Ctl:Status' for the label 'Status'"
+
+Technical considerations:
+- Start MCP server only once per session
+- Provide detailed error information for debugging when tools fail
    ```
 
 5. Deploy the Agent.

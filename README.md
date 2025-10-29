@@ -202,7 +202,10 @@ The server provides the following MCP tools:
      --tools "*"
    ```
 
-5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. (Note: Sometimes watsonx tools import will give error like "requests.exceptions.HTTPError: 500 Server Error: Internal Server Error". In such cases, retry with a new toolName)
+5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. 
+```
+(Note: Sometimes watsonx tools import will give error like "requests.exceptions.HTTPError: 500 Server Error: Internal Server Error". In such cases, retry with a new toolName). If still retry fails, then remove the contents of requirements.txt and save it and again perform the tool import with a new name.
+```
 
 ### Creating an Agent with OpenPages MCP Tools
 

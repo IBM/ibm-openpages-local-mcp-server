@@ -578,16 +578,6 @@ class GenericObjectTools(BaseTool):
             type_info = await self.get_type_definition(self.type_id)
             field_definitions = type_info.get('field_definitions', [])
             
-            # Process field definitions and arguments
-            # ... (existing code)
-            
-        except Exception as e:
-            logger.error(f"Error processing field definitions: {e}")
-            # Continue with basic fields if there's an error
-            # Use base class method to get type definition
-            type_info = await self.get_type_definition(self.type_id)
-            field_definitions = type_info.get('field_definitions', [])
-            
             # Create mappings for field names and labels
             field_def_map = {}  # Maps field names to definitions (case-sensitive)
             field_def_map_lower = {}  # Maps lowercase field names to definitions (case-insensitive)
@@ -707,6 +697,10 @@ class GenericObjectTools(BaseTool):
                         "name": arg_name,
                         "value": arg_value
                     })
+                    
+        except Exception as e:
+            logger.error(f"Error processing field definitions: {e}")
+            # Continue with basic fields if there's an error
         
         try:
             # Update the object

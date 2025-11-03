@@ -43,13 +43,24 @@ async def main(custom_settings: Optional[Settings] = None) -> None:
     logger.info(f"Debug mode: {app_settings.DEBUG}")
     logger.info(f"Server mode: {app_settings.SERVER_MODE}")
     
+    # Flag to track authentication status
+    auth_failed = False
+    auth_error_message = ""
+    server = None
+    
     try:
         # Create server instance with the custom settings
         server = LocalMCPServer(custom_settings=app_settings)
         
         # Initialize client authentication
-        await server.initialize_client()
-        logger.info("Client authentication initialized")
+        try:
+            await server.initialize_client()
+            logger.info("Client authentication initialized")
+        except RuntimeError as auth_error:
+            # Authentication failed - but keep server running to respond to requests
+            auth_failed = True
+            auth_error_message = f"Authentication failed: {str(auth_error)}. Please check your authentication credentials and URLs in the .env file."
+            logger.info("Server will continue running but all requests will return authentication error")
         
         # Process JSON-RPC messages from stdin
         logger.info("Ready to process requests")
@@ -63,8 +74,23 @@ async def main(custom_settings: Optional[Settings] = None) -> None:
                 # Parse the JSON-RPC request
                 try:
                     request = json.loads(line)
+                    request_id = request.get("id")
                     
-                    # Process the request
+                    # If authentication failed, return error for all requests except initialize
+                    if auth_failed and request.get("method") != "initialize":
+                        error_response = {
+                            "jsonrpc": "2.0",
+                            "error": {
+                                "code": -32000,
+                                "message": auth_error_message
+                            },
+                            "id": request_id
+                        }
+                        sys.stdout.write(json.dumps(error_response) + "\n")
+                        sys.stdout.flush()
+                        continue
+                    
+                    # Process the request normally
                     logger.debug("Processing request")
                     response, should_exit = await server.process_request(request)
                     

@@ -12,8 +12,7 @@ import logging
 import pathlib
 from typing import Dict, Any, List, Optional, Tuple, Union
 
-from issue_tools import IssueTools
-from control_tools import ControlTools
+from generic_object_tools import GenericObjectTools
 from openpages_client import OpenPagesClient
 from settings import settings, Settings
 
@@ -72,12 +71,14 @@ class LocalMCPServer:
         
         # Initialize tool modules
         try:
-            # Initialize available tools
-            self.issue_tools = IssueTools(self.client)
-            self.control_tools = ControlTools(self.client)
-            # Commented out tools that are not yet implemented
-            # self.risk_tools = RiskTools(self.client)
-            # self.query_tools = QueryTools(self.client)
+            # Initialize dynamic object tools based on configuration
+            self.object_tools = {}
+            for obj_config in self.settings.OPENPAGES_OBJECT_TYPES:
+                obj_type = obj_config.get("type_id")
+                tool_prefix = obj_config.get("tool_prefix")
+                if obj_type and tool_prefix:
+                    self.object_tools[tool_prefix] = GenericObjectTools(self.client, obj_config)
+                    logger.debug(f"Initialized dynamic tool for {obj_type} with prefix {tool_prefix}")
             
             logger.debug("Tool modules initialized successfully")
         except Exception as e:
@@ -95,9 +96,10 @@ class LocalMCPServer:
         
     def _load_tools_schema(self) -> None:
         """
-        Load tools schema from JSON file
+        Load tools schema from JSON file and dynamically add tools for configured object types
         
-        Attempts to load the tools schema from tools_schema.json in the same directory.
+        First attempts to load the base tools schema from tools_schema.json in the same directory.
+        Then dynamically adds tools for each object type configured in settings.
         Falls back to a minimal schema if the file can't be loaded.
         """
         try:
@@ -116,6 +118,9 @@ class LocalMCPServer:
                 except json.JSONDecodeError as e:
                     logger.error(f"Invalid JSON in tools schema file: {e}")
                     raise
+            
+            # Dynamically add tools for each configured object type
+            self._add_dynamic_tools_to_schema()
                     
         except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
             logger.error(f"Error loading tools schema: {e}")
@@ -142,6 +147,153 @@ class LocalMCPServer:
             # Re-raise unexpected exceptions after logging
             raise RuntimeError(f"Failed to load tools schema: {e}") from e
         
+    def _add_dynamic_tools_to_schema(self) -> None:
+        """
+        Dynamically add tools to the schema based on configured object types
+        
+        For each object type in settings.OPENPAGES_OBJECT_TYPES, adds the corresponding
+        create, update, query, and delete tools to the schema.
+        """
+        logger.info("Adding dynamic tools to schema based on configured object types")
+        
+        # Keep track of existing tool names to avoid duplicates
+        existing_tool_names = {tool["name"] for tool in self.tools}
+        
+        # Process each object type
+        for obj_config in self.settings.OPENPAGES_OBJECT_TYPES:
+            obj_type = obj_config.get("type_id")
+            tool_prefix = obj_config.get("tool_prefix")
+            display_name = obj_config.get("display_name", obj_type)
+            
+            # Ensure display_name is a string and not None
+            if display_name is None:
+                display_name = tool_prefix or "object"
+            
+            if not obj_type or not tool_prefix:
+                logger.warning(f"Skipping invalid object type configuration: {obj_config}")
+                continue
+                
+            logger.debug(f"Processing object type: {obj_type} with prefix {tool_prefix}")
+            
+            # Define the tools for this object type
+            tools_to_add = []
+            
+            # Create tool
+            create_tool_name = f"create_{tool_prefix}"
+            if create_tool_name not in existing_tool_names:
+                tools_to_add.append({
+                    "name": create_tool_name,
+                    "description": f"Create a new {display_name.lower()} in OpenPages",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": f"Name of the {display_name.lower()} (required)"
+                            }
+                        },
+                        "required": ["name"]
+                    }
+                })
+                
+            # Update tool
+            update_tool_name = f"update_{tool_prefix}"
+            if update_tool_name not in existing_tool_names:
+                tools_to_add.append({
+                    "name": update_tool_name,
+                    "description": f"Update an existing {display_name.lower()} in OpenPages",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "resource_id": {
+                                "type": "string",
+                                "description": f"Resource ID of the {display_name.lower()} to update"
+                            },
+                            "path": {
+                                "type": "string",
+                                "description": f"Path of the {display_name.lower()} to update"
+                            }
+                        },
+                        "required": ["name"]
+                    }
+                })
+                
+            # Query tool
+            query_tool_name = f"query_{tool_prefix}s"
+            if query_tool_name not in existing_tool_names:
+                tools_to_add.append({
+                    "name": query_tool_name,
+                    "description": f"Query for {display_name.lower()}s in OpenPages",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": f"Filter {display_name.lower()}s by name (partial match, optional)"
+                            },
+                            "owner_filter": {
+                                "type": "boolean",
+                                "description": "Filter by current user ownership (default: False)"
+                            },
+                            "status_filter": {
+                                "type": "string",
+                                "description": f"Filter {display_name.lower()}s by status (optional)"
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": f"Maximum number of {display_name.lower()}s to return (default: 20)"
+                            },
+                            "sort_by": {
+                                "type": "string",
+                                "description": "Field to sort by (default: 'Name')"
+                            },
+                            "sort_order": {
+                                "type": "string",
+                                "description": "Sort order, 'ASC' or 'DESC' (default: 'ASC')"
+                            },
+                            "fields": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "enum": []
+                                },
+                                "description": f"List of additional fields to include in the output (multiselect). Resource ID, Name, Description, and Status are always included."
+                            }
+                        }
+                    }
+                })
+                
+            # Delete tool
+            delete_tool_name = f"delete_{tool_prefix}"
+            if delete_tool_name not in existing_tool_names:
+                tools_to_add.append({
+                    "name": delete_tool_name,
+                    "description": f"Delete an existing {display_name.lower()} in OpenPages",
+                    "inputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "resource_id": {
+                                "type": "string",
+                                "description": f"Resource ID of the {display_name.lower()} to delete. (Note: Either Resource_ID or Path is required.)"
+                            },
+                            "path": {
+                                "type": "string",
+                                "description": f"Path of the {display_name.lower()} including the name. (Note: Either Resource_ID or Path is required.)"
+                            }
+                        }
+                    }
+                })
+                
+            # Add the tools to the schema
+            for tool in tools_to_add:
+                self.tools.append(tool)
+                existing_tool_names.add(tool["name"])
+                logger.info(f"Added dynamic tool: {tool['name']}")
+                
+        # Calculate how many tools were added
+        new_tool_count = len(self.tools) - len(existing_tool_names)
+        logger.info(f"Added {new_tool_count} dynamic tools to schema")
+    
     async def initialize_client(self) -> None:
         """
         Initialize the OpenPages client authentication
@@ -179,38 +331,49 @@ class LocalMCPServer:
             # Initialize client authentication first
             await self.initialize_client()
             
-            # Reload the tools schema to ensure we have the latest version
+            # Reload the tools schema to ensure we have the latest version with all object types
             self._load_tools_schema()
+            
+            # Load schemas for dynamic object types
+            for obj_config in self.settings.OPENPAGES_OBJECT_TYPES:
+                obj_type = obj_config.get("type_id")
+                tool_prefix = obj_config.get("tool_prefix")
+                display_name = obj_config.get("display_name", obj_type)
                 
-            # Get dynamic schema for create_issue
-            logger.debug("Building dynamic schema for SOXIssue")
-            issue_schema = await self.build_dynamic_schema_for_object("SOXIssue", "issue")
-            
-            # Update the create_issue tool schema
-            self._update_tool_schema("create_issue", issue_schema)
-            
-            # Update the update_issue tool schema
-            update_issue_schema = self._create_update_schema(issue_schema, "issue")
-            self._update_tool_schema("update_issue", update_issue_schema)
-
-            # Get dynamic schema for query_issues
-            logger.debug("Building dynamic schema for query_issues")
-            query_issues_tool = await self.update_query_issues_schema()
-            self._update_tool_schema("query_issues", query_issues_tool["inputSchema"])
+                if obj_type and tool_prefix:
+                    # Create schema
+                    logger.debug(f"Building dynamic schema for {obj_type}")
+                    obj_schema = await self.build_dynamic_schema_for_object(obj_type, tool_prefix)
+                    self._update_tool_schema(f"create_{tool_prefix}", obj_schema)
                     
-            # Get dynamic schema for create_control
-            logger.debug("Building dynamic schema for SOXControl")
-            control_schema = await self.build_dynamic_schema_for_object("SOXControl", "control")
-            self._update_tool_schema("create_control", control_schema)
-            
-            # Update the update_control tool schema
-            update_control_schema = self._create_update_schema(control_schema, "control")
-            self._update_tool_schema("update_control", update_control_schema)
-
-            # Get dynamic schema for query_controls
-            logger.debug("Building dynamic schema for query_controls")
-            query_controls_tool = await self.update_query_controls_schema()
-            self._update_tool_schema("query_controls", query_controls_tool["inputSchema"])
+                    # Update schema
+                    update_obj_schema = self._create_update_schema(obj_schema, tool_prefix)
+                    self._update_tool_schema(f"update_{tool_prefix}", update_obj_schema)
+                    
+                    # Query schema
+                    query_obj_schema = await self.build_dynamic_schema_for_query_object(obj_type)
+                    self._update_tool_schema(f"query_{tool_prefix}s", {
+                        "type": "object",
+                        "properties": query_obj_schema.get("properties", {}),
+                        "description": f"Query for {display_name.lower() if display_name else tool_prefix}s in OpenPages"
+                    })
+                    
+                    # Delete schema
+                    delete_obj_schema = {
+                        "type": "object",
+                        "properties": {
+                            "resource_id": {
+                                "type": "string",
+                                "description": f"Resource ID of the {tool_prefix} to delete"
+                            },
+                            "path": {
+                                "type": "string",
+                                "description": f"Path of the {tool_prefix} including the name"
+                            }
+                        },
+                        "description": f"Delete a {display_name.lower() if display_name else tool_prefix} in OpenPages"
+                    }
+                    self._update_tool_schema(f"delete_{tool_prefix}", delete_obj_schema)
             
             self.dynamic_schemas_loaded = True
             logger.info("Successfully loaded all dynamic schemas")
@@ -775,6 +938,9 @@ class LocalMCPServer:
         """
         logger.info("Handling initialize request")
         
+        # Reload the tools schema to ensure we have all object types
+        self._load_tools_schema()
+        
         # We don't load dynamic schemas here to make initialization faster
         # They will be loaded when list_tools is called
         
@@ -832,8 +998,16 @@ class LocalMCPServer:
         logger.info("Handling list_tools request")
         
         try:
+            # Reload the tools schema to ensure we have the latest version
+            # This will include any new object types from object_types.json
+            self._load_tools_schema()
+            
             # Load dynamic schemas to ensure tools have up-to-date field definitions
             await self.load_dynamic_schemas()
+            
+            # Log the number of tools being returned
+            logger.info(f"Returning {len(self.tools)} tools in schema")
+            
             return {
                 "tools": self.tools
             }
@@ -852,118 +1026,74 @@ class LocalMCPServer:
                 {"type": "text", "text": f"Echo: {text}"}
             ]
         }
-        
-    async def _handle_create_issue_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle the create_issue tool"""
-        result = await self.issue_tools.create_issue(arguments)
-        # Format the response
-        response_text = ""
-        for item in result:
-            response_text = item.text
-        return {
-            "result": [{"type": "text", "text": response_text}]
-        }
-        
-    async def _handle_query_issues_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """Handle the query_issues tool"""
-        result = await self.issue_tools.query_issues(arguments)
-        return {
-            "result": [{"type": "text", "text": item.text} for item in result]
-        }
-        
-    async def _handle_update_issue_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle the update_issue tool
-        
-        Args:
-            arguments: Tool arguments containing issue details to update
-            
-        Returns:
-            Dict containing the tool execution result
-        """
-        result = await self.issue_tools.update_issue(arguments)
-        return {
-            "result": [{"type": "text", "text": item.text} for item in result]
-        }
-        
-    async def _handle_create_control_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle the create_control tool
-        
-        Args:
-            arguments: Tool arguments containing control details to create
-            
-        Returns:
-            Dict containing the tool execution result
-        """
-        result = await self.control_tools.create_control(arguments)
-        # Format the response
-        response_text = ""
-        for item in result:
-            response_text = item.text
-        return {
-            "result": [{"type": "text", "text": response_text}]
-        }
-        
-    async def _handle_update_control_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle the update_control tool
-        
-        Args:
-            arguments: Tool arguments containing control details to update
-            
-        Returns:
-            Dict containing the tool execution result
-        """
-        result = await self.control_tools.update_control(arguments)
-        return {
-            "result": [{"type": "text", "text": item.text} for item in result]
-        }
-        
-    async def _handle_query_controls_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle the query_controls tool
-        
-        Args:
-            arguments: Tool arguments containing query parameters
-            
-        Returns:
-            Dict containing the tool execution result
-        """
-        result = await self.control_tools.query_controls(arguments)
-        return {
-            "result": [{"type": "text", "text": item.text} for item in result]
-        }
     
-    async def _handle_delete_control_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_generic_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Handle the delete_control tool
+        Handle any generic tool based on the tool name
         
         Args:
-            arguments: Tool arguments containing control details to delete
+            tool_name: Name of the tool to handle
+            arguments: Tool arguments
             
         Returns:
             Dict containing the tool execution result
         """
-        result = await self.control_tools.delete_control(arguments)
-        return {
-            "result": [{"type": "text", "text": item.text} for item in result]
-        }
-    
-    async def _handle_delete_issue_tool(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle the delete_issue tool
-        
-        Args:
-            arguments: Tool arguments containing issue details to delete
+        # Parse the tool name to determine the operation and object type
+        parts = tool_name.split('_', 1)
+        if len(parts) != 2:
+            return {
+                "result": [
+                    {"type": "text", "text": f"Invalid tool name format: {tool_name}"}
+                ]
+            }
             
-        Returns:
-            Dict containing the tool execution result
-        """
-        result = await self.issue_tools.delete_issue(arguments)
-        return {
-            "result": [{"type": "text", "text": item.text} for item in result]
-        }
+        operation = parts[0]  # create, update, query, delete
+        obj_type = parts[1]   # control, issue, etc.
+        
+        # Handle plural form for query operations
+        if obj_type.endswith('s') and operation == 'query':
+            obj_type = obj_type[:-1]
+            
+        # Check if we have a tool for this object type
+        if obj_type not in self.object_tools:
+            return {
+                "result": [
+                    {"type": "text", "text": f"No tool available for object type: {obj_type}"}
+                ]
+            }
+            
+        # Get the appropriate tool
+        tool = self.object_tools[obj_type]
+        
+        try:
+            # Call the appropriate method based on the operation
+            if operation == 'create':
+                result = await tool.create_object(arguments)
+            elif operation == 'update':
+                result = await tool.update_object(arguments)
+            elif operation == 'query':
+                result = await tool.query_objects(arguments)
+            elif operation == 'delete':
+                result = await tool.delete_object(arguments)
+            else:
+                return {
+                    "result": [
+                        {"type": "text", "text": f"Unknown operation: {operation}"}
+                    ]
+                }
+                
+            # Format the response
+            return {
+                "result": [{"type": "text", "text": item.text} for item in result]
+            }
+            
+        except Exception as e:
+            logger.error(f"Error handling {tool_name}: {e}", exc_info=True)
+            return {
+                "result": [
+                    {"type": "text", "text": f"Error handling {tool_name}: {str(e)}"}
+                ]
+            }
     
     async def handle_call_tool(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -992,29 +1122,17 @@ class LocalMCPServer:
         logger.debug(f"Tool arguments: {arguments}")
         
         try:
-            # Map tool names to their handler methods
-            tool_handlers = {
-                "echo": self._handle_echo_tool,
-                "create_issue": self._handle_create_issue_tool,
-                "query_issues": self._handle_query_issues_tool,
-                "update_issue": self._handle_update_issue_tool,
-                "delete_issue": self._handle_delete_issue_tool,
-                "create_control": self._handle_create_control_tool,
-                "update_control": self._handle_update_control_tool,
-                "delete_control": self._handle_delete_control_tool,
-                "query_controls": self._handle_query_controls_tool
+            # Map special tool names to their handler methods
+            special_tool_handlers = {
+                "echo": self._handle_echo_tool
             }
             
-            # Call the appropriate handler or return an error
-            if name in tool_handlers:
-                return await tool_handlers[name](arguments)
-            else:
-                logger.warning(f"Unknown tool requested: {name}")
-                return {
-                    "result": [
-                        {"type": "text", "text": f"Tool not found: {name}"}
-                    ]
-                }
+            # Check if this is a special tool
+            if name in special_tool_handlers:
+                return await special_tool_handlers[name](arguments)
+            
+            # Handle all other tools using the generic handler
+            return await self._handle_generic_tool(name, arguments)
                 
         except Exception as e:
             logger.error(f"Error calling tool {name}: {e}", exc_info=True)

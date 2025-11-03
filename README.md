@@ -28,11 +28,74 @@ This architecture makes the OpenPages MCP Server ideal for integration with vari
 
 ## Features
 
-- Create, update, and query issues in OpenPages
-- Create, update, and query controls in OpenPages
-- Dynamic schema generation based on OpenPages object types
-- Support for both basic and bearer authentication
-- Configurable SSL verification for development environments
+- **Dynamic Object Type Support**: Extensible architecture that supports multiple OpenPages object types (Issues, Controls, Risks, and more) through a configuration-driven approach
+- **CRUD Operations**: Create, update, query, and delete operations for all configured object types
+- **Dynamic Schema Generation**: Automatic schema generation based on OpenPages object type definitions
+- **Flexible Authentication**: Support for both basic and bearer authentication methods
+- **Development-Friendly**: Configurable SSL verification for development environments
+- **Configuration-Based**: Easy addition of new object types through JSON configuration without code changes
+
+## Dynamic Object Type Architecture
+
+The OpenPages MCP Server uses a dynamic, configuration-driven approach to support multiple OpenPages object types. This architecture allows you to easily extend the server to support new object types without modifying the core code.
+
+### Configuration File: `object_types.json`
+
+The server uses a JSON configuration file to define the object types it supports. Each object type configuration includes:
+
+```json
+{
+  "object_types": [
+    {
+      "type_id": "SOXControl",           // OpenPages object type ID
+      "tool_prefix": "control",          // Prefix for tool names (e.g., create_control)
+      "display_name": "Control",         // Human-readable name
+      "path_prefix": "Controls",         // API path prefix
+      "status_field": "OPSS-Ctl:Status"  // Status field identifier
+    },
+    {
+      "type_id": "SOXIssue",
+      "tool_prefix": "issue",
+      "display_name": "Issue",
+      "path_prefix": "Issue",
+      "status_field": "OPSS-Iss:Status"
+    },
+    {
+      "type_id": "SOXRisk",
+      "tool_prefix": "risk",
+      "display_name": "Risk",
+      "path_prefix": "Risk",
+      "status_field": "OPSS-Risk:Status"
+    }
+  ]
+}
+```
+
+### How It Works
+
+1. **Automatic Tool Generation**: The server reads `object_types.json` at startup and automatically generates MCP tools for each configured object type
+2. **Schema Discovery**: For each object type, the server queries OpenPages to retrieve the field schema and generates appropriate tool parameters
+3. **Consistent Interface**: All object types follow the same CRUD pattern (create, update, query, delete), ensuring a consistent interface
+4. **Easy Extension**: To add support for a new object type, simply add a new entry to `object_types.json` with the appropriate configuration
+
+### Adding New Object Types
+
+To add support for a new OpenPages object type:
+
+1. Add a new entry to `object_types.json` with the object type details
+2. Restart the MCP server
+3. The server will automatically generate the necessary tools for the new object type
+
+Example for adding a new "Action" object type:
+```json
+{
+  "type_id": "SOXAction",
+  "tool_prefix": "action",
+  "display_name": "Action",
+  "path_prefix": "Actions",
+  "status_field": "OPSS-Act:Status"
+}
+```
 
 ## Prerequisites
 
@@ -145,17 +208,45 @@ For a more user-friendly testing experience, you can use the MCP Inspector UI (r
 
 ## Available Tools
 
-The server provides the following MCP tools:
+The server dynamically generates MCP tools based on the object types configured in `object_types.json`. For each configured object type, the following tools are automatically created:
 
-### Issue Management
+### Standard CRUD Operations (per Object Type)
+
+For each object type (e.g., Issue, Control, Risk), the following tools are generated:
+
+- **`create_{object_type}`**: Create a new object in OpenPages
+  - Example: `create_issue`, `create_control`, `create_risk`
+  
+- **`update_{object_type}`**: Update an existing object
+  - Example: `update_issue`, `update_control`, `update_risk`
+  
+- **`query_{object_type}s`**: Search for objects with filtering options
+  - Example: `query_issues`, `query_controls`, `query_risks`
+  
+- **`delete_{object_type}`**: Delete an object by ID
+  - Example: `delete_issue`, `delete_control`, `delete_risk`
+
+### Currently Configured Object Types
+
+Based on the default `object_types.json` configuration, the following tools are available:
+
+#### Issue Management
 - `create_issue`: Create a new issue in OpenPages
 - `update_issue`: Update an existing issue
 - `query_issues`: Search for issues with filtering options
+- `delete_issue`: Delete an issue by resource ID
 
-### Control Management
+#### Control Management
 - `create_control`: Create a new control in OpenPages
 - `update_control`: Update an existing control
 - `query_controls`: Search for controls with filtering options
+- `delete_control`: Delete a control by resource ID
+
+#### Risk Management
+- `create_risk`: Create a new risk in OpenPages
+- `update_risk`: Update an existing risk
+- `query_risks`: Search for risks with filtering options
+- `delete_risk`: Delete a risk by resource ID
 
 ### Utility
 - `echo`: Simple echo tool for testing connectivity
@@ -267,55 +358,120 @@ The server provides the following MCP tools:
 
 You can test the agent either from the Preview right pane or by selecting the agent in the watsonx Orchestrate home page and chatting with it. Here are some sample prompts to test different OpenPages Tools:
 
-#### 1. Create Issue (create_issue tool)
+#### Issue Management Examples
+
+##### 1. Create Issue (create_issue tool)
 ```
 Create an issue in OpenPages with the following details
-Name - Issue for business ABCD Corp LTD
+Name - Issue for business Entity ABC Ltd
 Description - Mitigating infra risks
 Primary parent id - 7599
-OPSS-Iss:Assignee - jayasankar.sreedharan@ibm.com
-OPSS-Iss:Priority - Medium
-OPSS-Iss:Status - Open
-OPSS-Iss:Issue Type - Design Effectiveness
+Issue Owner - jayasankar.sreedharan@ibm.com
+Priority - Medium
+Issue Status - Open
+Issue Type - Design Effectiveness
 ```
 
-#### 2. Update Issue (update_issue tool)
+##### 2. Update Issue (update_issue tool)
 ```
-Update the issue with Resource ID - 11004 and name - Issue for business ABCD Corp LTD, with the following updated properties
-Description - Mitigating infra issues
-OPSS-Iss:Priority - High
-OPSS-Iss:Issue Type - Control Activity Missing
-```
-
-#### 3. Query Issue (query_issue tool)
-```
-Get the issue in openpages with name - Issue for business ABCD Corp LTD and show the properties in bullet points
+Update the issue with Resource ID - 14008 and name - Issue for business Entity ABC Ltd, with the following updated properties
+Description - Mitigating financial issues
+Priority - High
+Issue Type - Control Activity Missing
 ```
 
-#### 4. Create Control (create_control tool)
+##### 3. Query Issue (query_issues tool)
+```
+Get the issue in openpages with name - 'Issue for business Entity ABC Ltd' and show the below properties
+Name
+Description
+Primary parent id
+Issue Owner
+Priority
+Issue Status
+Issue Type
+```
+
+##### 4. Delete Issue (delete_issue tool)
+```
+Delete the issue with id 14008
+```
+
+#### Control Management Examples
+
+##### 5. Create Control (create_control tool)
 ```
 Create a control in OpenPages with the following details
-Name - Control for business ABCD Corp LTD
+Name - Control for business Entity ABC Ltd
 Description - Mitigating infra risks
-OPSS-Ctl:Control Owner - jayasankar.sreedharan@ibm.com
-OPSS-Ctl:Design Effectiveness - Not Determined
-OPSS-Ctl:Operating Effectiveness - Effective
-OPSS-Ctl:Control Type - Detective
-OPSS-Ctl:Frequency - Daily
+Control Owner -
+Design Effectiveness - Not Determined
+Operating Effectiveness - Effective
+Control Type - Detective
+Frequency - Daily
 Primary parent id - 8182
 ```
 
-#### 5. Update Control (update_control tool)
+##### 6. Update Control (update_control tool)
 ```
-Update the control with Resource ID - 11006 and name - Control for business ABCD Corp LTD, with the following updated properties
-Description - Mitigating infra issues
-OPSS-Ctl:Frequency - Weekly
-OPSS-Ctl:Control Type - Administrative
+Update the control with Resource ID - 14011 and name - 'Control for business Entity ABC Ltd', with the following updated properties
+Control Owner - Jayasankar.Sreedharan@ibm.com
 ```
 
-#### 6. Query Control (query_control tool)
+##### 7. Query Control (query_controls tool)
 ```
-Get the Control in openpages with name - Control for business ABCD Corp LTD, and show all the available properties in bullet points
+Get the control in openpages with name - 'Control for business Entity ABC Ltd' and show the below properties
+Name
+Description
+Control Owner
+Design Effectiveness
+Operating Effectiveness
+Control Type
+Frequency
+Primary parent id
+```
+
+##### 8. Delete Control (delete_control tool)
+```
+Delete the control with id 14011
+```
+
+#### Risk Management Examples
+
+##### 9. Create Risk (create_risk tool)
+```
+Create a risk in OpenPages with the following details
+Name - Risk for business Entity ABC Ltd
+Description - Mitigating openpages risks
+Status - Awaiting Assessment
+Owner - Jayasankar.Sreedharan@ibm.com
+Assessment Method - Qualitative
+Basel Risk Category - External Fraud
+Primary parent id - 5492
+Domain - Technology
+```
+
+##### 10. Update Risk (update_risk tool)
+```
+Update the risk with Resource ID - 14045 and name - 'Risk for business Entity ABC Ltd', with the following updated properties
+Description - Mitigating financial risks
+```
+
+##### 11. Query Risk (query_risks tool)
+```
+Get the risk in openpages with name - 'Risk for business Entity ABC Ltd' and show the below properties
+Name
+Description
+Status
+Owner
+Assessment Method
+Basel Risk Category
+Primary parent id
+```
+
+##### 12. Delete Risk (delete_risk tool)
+```
+Delete the risk with id 14045
 ```
 
 ### OpenPages Local MCP - WatsonX Orchestrate High Level Architecture - User Flow

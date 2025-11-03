@@ -1,0 +1,25 @@
+{
+  "object_types": [
+    {
+      "type_id": "SOXControl",
+      "tool_prefix": "control",
+      "display_name": "Control",
+      "path_prefix": "Controls",
+      "status_field": "OPSS-Ctl:Status"
+    },
+    {
+      "type_id": "SOXIssue",
+      "tool_prefix": "issue",
+      "display_name": "Issue",
+      "path_prefix": "Issue",
+      "status_field": "OPSS-Iss:Status"
+    },
+    {
+      "type_id": "SOXRisk",
+      "tool_prefix": "risk",
+      "display_name": "risk",
+      "path_prefix": "Risk",
+      "status_field": "OPSS-Risk:Status"
+    }
+  ]
+}

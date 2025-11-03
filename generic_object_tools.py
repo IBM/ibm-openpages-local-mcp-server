@@ -1,6 +1,6 @@
 """
-Issue Tools for OpenPages MCP Server
-Provides tools for working with issues in OpenPages
+Generic Object Tools for OpenPages MCP Server
+Provides tools for working with any object type in OpenPages
 """
 
 import logging
@@ -16,46 +16,51 @@ from base_tool import BaseTool
 # Configure logging
 logger = logging.getLogger(__name__)
 
-class IssueTools(BaseTool):
+class GenericObjectTools(BaseTool):
     """
-    Tools for working with issues in OpenPages
+    Tools for working with any object type in OpenPages
     
-    This class provides object-centric tools for working with Issues objects in OpenPages,
-    including finding, creating, and updating issues.
+    This class provides object-centric tools for working with any object type in OpenPages,
+    including finding, creating, updating, and deleting objects.
     """
     
-    def __init__(self, client: OpenPagesClient):
+    def __init__(self, client: OpenPagesClient, object_config: Dict[str, Any]):
         """
-        Initialize issue tools
+        Initialize generic object tools
         
         Args:
             client: OpenPages API client
+            object_config: Configuration for the object type
         """
         super().__init__(client)
+        self.object_config = object_config
+        self.type_id = object_config.get("type_id", "")
+        self.display_name = object_config.get("display_name", "Object")
+        self.path_prefix = object_config.get("path_prefix", "")
+        self.status_field = object_config.get("status_field", "")
         
-    async def get_issue_fields(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def get_object_fields(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Get available fields for issue creation
+        Get available fields for object creation
         
         Args:
             arguments: Tool arguments
-                - issue_type: Type of issue (default: SOXIssue)
+                - object_type: Type of object (optional, defaults to configured type_id)
                 
         Returns:
             List of text content with available fields information
         """
-        object_type = arguments.get('issue_type', 'SOXIssue')
+        object_type = arguments.get('object_type', self.type_id)
         
         try:
-            # Get the type definition using the client's method
-            logger.info(f"Fetching type definition for: {object_type}")
-            type_info = await self.client.get_type_definition(object_type)
+            # Get the type definition using the base class method
+            type_info = await self.get_type_definition(object_type)
             
             # Extract field definitions
             field_definitions = type_info.get('field_definitions', [])
             
             if not field_definitions:
-                return [TextContent(type="text", text=f"No fields found for issue type: {object_type}")]
+                return [TextContent(type="text", text=f"No fields found for {self.display_name.lower()} type: {object_type}")]
             
             # Format the response
             response_text = f"Available fields for {object_type} (ID: {type_info.get('id')}):\n\n"
@@ -87,30 +92,29 @@ class IssueTools(BaseTool):
             logger.error(f"Error getting field definitions: {e}")
             return [TextContent(type="text", text=f"Error retrieving field definitions: {str(e)}")]
     
-    async def create_issue(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def create_object(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Create a new issue in OpenPages
+        Create a new object in OpenPages
         
         Args:
             arguments: Tool arguments
-                - name: Name of the issue (required)
-                - title: Issue title (optional)
-                - description: Description of the issue (optional)
+                - name: Name of the object (required)
+                - title: Object title (optional)
+                - description: Description of the object (optional)
                 - Any other field defined in the schema (optional)
                 
         Returns:
-            List of text content with created issue information
+            List of text content with created object information
         """
         # Extract required fields
         name = arguments.get('name')
         if not name:
-            return [TextContent(type="text", text="Error: Issue name is required")]
+            return [TextContent(type="text", text=f"Error: {self.display_name} name is required")]
         
         # Extract common fields
         primaryParentId = arguments.get('primaryParentId', '')
         title = arguments.get('title', '')
         description = arguments.get('description', '')
-        issue_type = "SOXIssue"
         
         # If primaryParentId is provided and not a number, resolve it using the utility function
         if primaryParentId and not primaryParentId.isdigit():
@@ -124,12 +128,13 @@ class IssueTools(BaseTool):
             "title": title,
             "description": description,
             "fields": [],
-            "type_definition_id": issue_type
+            "type_definition_id": self.type_id
         }
         
         # Get field definitions to properly format field values
         try:
-            type_info = await self.client.get_type_definition(issue_type)
+            # Use base class method to get type definition
+            type_info = await self.get_type_definition(self.type_id)
             field_definitions = type_info.get('field_definitions', [])
             
             # Create mappings for field names and labels
@@ -234,12 +239,8 @@ class IssueTools(BaseTool):
                     field_name = field_def.get('name')
                     field_type = field_def.get('data_type', 'STRING_TYPE')
                     
-                    # Format the value based on field type
-                    formatted_value = arg_value
-                    
-                    # Handle enum types (need to be objects with name property)
-                    if field_type == "ENUM_TYPE":
-                        formatted_value = {"name": arg_value}
+                    # Format the value based on field type using base class method
+                    formatted_value = self.format_field_value(arg_value, field_type)
                     
                     # Add the field to the content data
                     content_data["fields"].append({
@@ -255,50 +256,51 @@ class IssueTools(BaseTool):
                         "name": arg_name,
                         "value": arg_value
                     })
-            
-            # No special handling for specific fields - all fields are processed in the loop above
                 
         except Exception as e:
             logger.error(f"Error processing field definitions: {e}")
             # Continue with basic fields if there's an error
         
         try:
-            # Create the issue
-            logger.info(f"Creating new issue: {content_data}")
+            # Create the object
+            logger.info(f"Creating new {self.display_name.lower()}: {content_data}")
             result = await self.client.create_content(content_data)
             
             # Extract resource ID from the result
             resource_id = result.get("id")
             if not resource_id:
-                return [TextContent(type="text", text="Error: Failed to create issue (no resource ID returned)")]
+                return [TextContent(type="text", text=f"Error: Failed to create {self.display_name.lower()} (no resource ID returned)")]
             
-            response_text = f"Successfully created issue:\n\n"
-            response_text += f"- **Name**: {name}\n"
-            response_text += f"- **Resource ID**: {resource_id}\n"
-            response_text += f"- **Type**: {issue_type}\n"
-            response_text += f"- **parent**: {primaryParentId}\n"
+            # Use base class method to create response text
+            response_items = {
+                "Name": name,
+                "Resource ID": resource_id,
+                "Type": self.type_id,
+                "Parent": primaryParentId,
+                "Task-View Path": self.get_task_view_url(resource_id)
+            }
             
             if description:
-                response_text += f"- **Description**: {description}\n"
-            
-            response_text += f"- **Task-View Path**: {self.get_task_view_url(resource_id)}"
+                response_items["Description"] = description
+                
+            response_text = self.create_response_text(f"Successfully created {self.display_name.lower()}:", response_items)
             
             return [TextContent(type="text", text=response_text)]
         
         except Exception as e:
-            logger.error(f"Error creating issue: {e}")
-            return [TextContent(type="text", text=f"Error creating issue: {str(e)}")]
+            logger.error(f"Error creating {self.display_name.lower()}: {e}")
+            return [TextContent(type="text", text=f"Error creating {self.display_name.lower()}: {str(e)}")]
     
-    async def query_issues(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def query_objects(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Query for issues in OpenPages
+        Query for objects in OpenPages
         
         Args:
             arguments: Tool arguments
-                - name: Filter issues by name (partial match, optional)
+                - name: Filter objects by name (partial match, optional)
                 - owner_filter: Filter by current user ownership (default: False)
-                - status_filter: Filter issues by status (optional)
-                - limit: Maximum number of issues to return (default: 20)
+                - status_filter: Filter objects by status (optional)
+                - limit: Maximum number of objects to return (default: 20)
                 - sort_by: Field to sort by (default: "Name")
                 - sort_order: Sort order, "ASC" or "DESC" (default: "ASC")
                 - fields: List of additional fields to include in the output (optional, multiselect)
@@ -306,7 +308,7 @@ class IssueTools(BaseTool):
                 - fetch_all_properties: Whether to fetch all main properties (default: False)
                 
         Returns:
-            List of text content with issue information
+            List of text content with objects information
         """
         name_filter = arguments.get('name')
         owner_filter = arguments.get('owner_filter', False)
@@ -333,32 +335,22 @@ class IssueTools(BaseTool):
         additional_fields = arguments.get('fields', [])
         
         # Always include these required fields
-        required_fields = ['[Resource ID]', '[Name]', '[Description]', '[OPSS-Iss:Status]']
-        
-        # Map common field names to their SQL column names
-        field_mapping = {
-            'Priority': '[OPSS-Iss:Priority]',
-            'Owner': '[Owner]',
-            'Due Date': '[OPSS-Iss:DueDate]',
-            'Status': '[OPSS-Iss:Status]'
-        }
+        required_fields = ['[Resource ID]', '[Name]', '[Description]']
+        if self.status_field:
+            required_fields.append(f'[{self.status_field}]')
         
         # Add additional fields if specified
         selected_fields = required_fields.copy()
         
         # Try to get field definitions to build a more complete mapping
         try:
-            type_info = await self.client.get_type_definition('SOXIssue')
+            # Use base class method to get type definition
+            type_info = await self.get_type_definition(self.type_id)
             field_definitions = type_info.get('field_definitions', [])
             
-            # Update field mapping with all available fields from type definition
-            for field_def in field_definitions:
-                field_name = field_def.get('name')
-                if field_name:
-                    # Create a simplified name for easier matching
-                    simple_name = field_name.split(':')[-1] if ':' in field_name else field_name
-                    field_mapping[simple_name] = f'[{field_name}]'
-                    
+            # Use base class method to create field mapping
+            field_mapping = self.create_field_mapping(field_definitions)
+            
             # If fetch_all_properties is True, add all fields from the type definition
             if fetch_all_properties:
                 for field_def in field_definitions:
@@ -369,6 +361,7 @@ class IssueTools(BaseTool):
                             selected_fields.append(sql_field)
         except Exception as e:
             logger.warning(f"Could not fetch field definitions: {e}. Using default field mapping.")
+            field_mapping = {}
         
         # Process additional fields
         for field in additional_fields:
@@ -403,7 +396,7 @@ class IssueTools(BaseTool):
         # Build query with selected fields
         query = f"""
         SELECT {', '.join(selected_fields)}
-        FROM [SOXIssue]
+        FROM [{self.type_id}]
         WHERE [Resource ID] IS NOT NULL
         """
         
@@ -417,8 +410,8 @@ class IssueTools(BaseTool):
             if current_user:
                 query += f" AND [Owner] = '{current_user}'"
         
-        if status_filter:
-            query += f" AND [OPSS-Iss:Status] = '{status_filter}'"
+        if status_filter and self.status_field:
+            query += f" AND [{self.status_field}] = '{status_filter}'"
             
         # Add sorting with multiple fields
         sort_clauses = []
@@ -439,41 +432,33 @@ class IssueTools(BaseTool):
                     # Use the full field name with group prefix
                     sort_clauses.append(f"[{full_field_name}] {order}")
             else:
-                # Handle special fields
-                if field == "Status":
-                    sort_clauses.append(f"[OPSS-Iss:Status] {order}")
-                elif field == "Priority":
-                    sort_clauses.append(f"[OPSS-Iss:Priority] {order}")
-                elif field == "Due Date":
-                    sort_clauses.append(f"[OPSS-Iss:DueDate] {order}")
-                else:
-                    sort_clauses.append(f"[{field}] {order}")
+                sort_clauses.append(f"[{field}] {order}")
                 
         query += f" ORDER BY {', '.join(sort_clauses)}" if sort_clauses else ""
         
         # Add limit
         query += f" LIMIT {limit}"
         
-        logger.info(f"Executing query for issues: {query}")
+        logger.info(f"Executing query for {self.display_name.lower()}s: {query}")
         result = await self.client.query(query)
         
         # Format results
-        issues = []
+        objects = []
         for row in result.get('rows', []):
-            issue_data = {}
+            object_data = {}
             for field in row['fields']:
                 # Handle case where field['value'] could be null
                 if 'value' in field:
-                    issue_data[field['name']] = field['value']
+                    object_data[field['name']] = field['value']
                 else:
-                    issue_data[field['name']] = None
-            issues.append(issue_data)
+                    object_data[field['name']] = None
+            objects.append(object_data)
         
         # Create response
-        if not issues:
-            return [TextContent(type="text", text="No issues found matching the criteria.")]
+        if not objects:
+            return [TextContent(type="text", text=f"No {self.display_name.lower()}s found matching the criteria.")]
         
-        response_text = f"Found {len(issues)} issue(s):\n\n"
+        response_text = f"Found {len(objects)} {self.display_name.lower()}(s):\n\n"
         
         # Create a reverse mapping from SQL field names to display names
         display_names = {}
@@ -486,101 +471,102 @@ class IssueTools(BaseTool):
         display_names['Resource ID'] = 'ID'
         display_names['Name'] = 'Name'
         display_names['Description'] = 'Description'
-        display_names['OPSS-Iss:Status'] = 'Status'
+        if self.status_field:
+            display_names[self.status_field] = 'Status'
         
-        for issue in issues:
-            response_text += f"## {issue.get('Name', 'N/A')}\n"
+        for obj in objects:
+            response_text += f"## {obj.get('Name', 'N/A')}\n"
+            
+            # Create a dictionary for the object items to display
+            object_items = {}
             
             # Get the resource ID
-            resource_id = issue.get('Resource ID', 'N/A')
+            resource_id = obj.get('Resource ID', 'N/A')
             
             # Always show required fields first
-            response_text += f"- **ID**: {resource_id}\n"
+            object_items["ID"] = resource_id
             
             # Add taskview link
             if resource_id != 'N/A':
-                response_text += f"- **Task-View Path**: {self.get_task_view_url(resource_id)}\n"
+                object_items["Task-View Path"] = self.get_task_view_url(resource_id)
             
             # Status might be returned with different field names depending on the query
-            status_value = issue.get('Status', issue.get('OPSS-Iss:Status', 'N/A'))
-            # Handle enum types (objects with name property)
-            if isinstance(status_value, dict) and 'name' in status_value:
-                status_value = status_value['name']
-            response_text += f"- **Status**: {status_value}\n"
+            if self.status_field:
+                status_value = obj.get('Status', obj.get(self.status_field, 'N/A'))
+                object_items["Status"] = status_value
             
             # Add description if available
-            description = issue.get('Description')
+            description = obj.get('Description')
             if description:
-                response_text += f"- **Description**: {description}\n"
+                object_items["Description"] = description
             
             # Add all other available fields that were selected
-            for field_name, field_value in issue.items():
+            for field_name, field_value in obj.items():
                 # Skip fields we've already handled
-                if field_name in ['Resource ID', 'Name', 'Description', 'Status', 'OPSS-Iss:Status']:
+                if field_name in ['Resource ID', 'Name', 'Description']:
                     continue
-                    
-                # Display fields even if they have null values
-                if field_value is None or field_value == '':
-                    field_value = 'N/A'
-                
-                # Handle enum types (objects with name property)
-                if isinstance(field_value, dict) and 'name' in field_value:
-                    field_value = field_value['name']
                 
                 # Get display name for the field
                 display_name = display_names.get(field_name, field_name)
-                response_text += f"- **{display_name}**: {field_value}\n"
+                object_items[display_name] = field_value
+            
+            # Use base class method to format the object items
+            for key, value in object_items.items():
+                display_value = self.extract_display_value(value)
+                response_text += f"- **{key}**: {display_value}\n"
             
             response_text += "\n"
         
         return [TextContent(type="text", text=response_text)]
     
-    async def update_issue(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def update_object(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Update an existing issue in OpenPages
+        Update an existing object in OpenPages
         
         Args:
             arguments: Tool arguments
-                - resource_id: Resource ID of the issue to update
-                - path: Path of the issue including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Issue #1)
-                - name: Name of the issue (required)
-                - title: Issue title (optional)
-                - description: Description of the issue (optional)
+                - resource_id: Resource ID of the object to update
+                - path: Path of the object including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Object #1)
+                - name: Name of the object (optional)
+                - title: Object title (optional)
+                - description: Description of the object (optional)
                 - Any other field defined in the schema (optional)
                 
         Returns:
-            List of text content with updated issue information
+            List of text content with updated object information
         """
         # Extract required fields
         resource_id = arguments.get('resource_id')
         path = arguments.get('path')
-
+        
         if not resource_id and not path:
-            return [TextContent(type="text", text="Error: Resource ID or path is required")]
+            return [TextContent(type="text", text=f"Error: Resource ID or path is required")]
         
         if resource_id and path:
-            return [TextContent(type="text", text="Error: Only one of resource ID or path is required")]
+            return [TextContent(type="text", text=f"Error: Only one of resource ID or path is required")]
 
         name = arguments.get('name')
         if not name:
-            return [TextContent(type="text", text="Error: Issue name is required")]
+            return [TextContent(type="text", text=f"Error: {self.display_name} name is required")]
         
         object_id = resource_id
         if not object_id:
-            object_id = f"Issue/{path}"
+            object_id = f"{self.path_prefix}/{path}"
             object_id = urllib.parse.quote(object_id, safe='')
             
         # Extract common fields
         title = arguments.get('title')
         description = arguments.get('description')
-        issue_type = "SOXIssue"
         
         # Prepare content data
         content_data: dict[str, Any] = {
-            "name": name,
             "fields": [],
-            "type_definition_id": issue_type
+            "type_definition_id": self.type_id
         }
+        
+        # Add optional fields if provided
+        if name:
+            content_data["name"] = name
         if title:
             content_data["title"] = title
         if description:
@@ -588,7 +574,8 @@ class IssueTools(BaseTool):
         
         # Get field definitions to properly format field values
         try:
-            type_info = await self.client.get_type_definition(issue_type)
+            # Use base class method to get type definition
+            type_info = await self.get_type_definition(self.type_id)
             field_definitions = type_info.get('field_definitions', [])
             
             # Create mappings for field names and labels
@@ -693,12 +680,8 @@ class IssueTools(BaseTool):
                     field_name = field_def.get('name')
                     field_type = field_def.get('data_type', 'STRING_TYPE')
                     
-                    # Format the value based on field type
-                    formatted_value = arg_value
-                    
-                    # Handle enum types (need to be objects with name property)
-                    if field_type == "ENUM_TYPE":
-                        formatted_value = {"name": arg_value}
+                    # Format the value based on field type using base class method
+                    formatted_value = self.format_field_value(arg_value, field_type)
                     
                     # Add the field to the content data
                     content_data["fields"].append({
@@ -714,49 +697,49 @@ class IssueTools(BaseTool):
                         "name": arg_name,
                         "value": arg_value
                     })
-            
-            # No special handling for specific fields - all fields are processed in the loop above
-                
+                    
         except Exception as e:
             logger.error(f"Error processing field definitions: {e}")
             # Continue with basic fields if there's an error
         
         try:
-            # Update the issue
-            logger.info(f"Updating issue {object_id}: {content_data}")
+            # Update the object
+            logger.info(f"Updating {self.display_name.lower()} {object_id}: {content_data}")
             result = await self.client.update_content(object_id, content_data)
             
             # Extract resource ID from the result
             updated_resource_id = result.get("id")
             if not updated_resource_id:
-                return [TextContent(type="text", text="Error: Failed to update issue (no resource ID returned)")]
+                return [TextContent(type="text", text=f"Error: Failed to update {self.display_name.lower()} (no resource ID returned)")]
             
-            response_text = f"Successfully updated issue:\n\n"
-            response_text += f"- **Resource ID**: {updated_resource_id}\n"
+            # Use base class method to create response text
+            response_items = {
+                "Resource ID": updated_resource_id,
+                "Task-View Path": self.get_task_view_url(updated_resource_id)
+            }
             
-            # Extract name from result if available
-            issue_name = result.get("name", "N/A")
-            response_text += f"- **Name**: {issue_name}\n"
-            
+            if name:
+                response_items["Name"] = name
+                
             if description:
-                response_text += f"- **Description**: {description}\n"
-
-            response_text += f"- **Task-View Path**: {self.get_task_view_url(updated_resource_id)}\n"
+                response_items["Description"] = description
+                
+            response_text = self.create_response_text(f"Successfully updated {self.display_name.lower()}:", response_items)
             
             return [TextContent(type="text", text=response_text)]
         
         except Exception as e:
-            logger.error(f"Error updating issue: {e}")
-            return [TextContent(type="text", text=f"Error updating issue: {str(e)}")]
+            logger.error(f"Error updating {self.display_name.lower()}: {e}")
+            return [TextContent(type="text", text=f"Error updating {self.display_name.lower()}: {str(e)}")]
     
-    async def delete_issue(self, arguments: Dict[str, Any]) -> List[TextContent]:
+    async def delete_object(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """
-        Delete an existing issue in OpenPages
+        Delete an existing object in OpenPages
         
         Args:
             arguments: Tool arguments
-                - resource_id: Resource ID of the issue to delete
-                - path: Path of the issue including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Issue #1)
+                - resource_id: Resource ID of the object to delete
+                - path: Path of the object including the name (i.e. /High Oaks Bank/Africa and Middle East/Test Object #1)
                 
         Returns:
             List of text content with deletion confirmation
@@ -766,45 +749,46 @@ class IssueTools(BaseTool):
         path = arguments.get('path')
         
         if not resource_id and not path:
-            return [TextContent(type="text", text="Error: Resource ID or path is required")]
+            return [TextContent(type="text", text=f"Error: Resource ID or path is required")]
         
         if resource_id and path:
-            return [TextContent(type="text", text="Error: Only one of resource ID or path is required")]
+            return [TextContent(type="text", text=f"Error: Only one of resource ID or path is required")]
         
         object_id = resource_id
         if not object_id:
-            object_id = f"Issue/{path}"
+            object_id = f"{self.path_prefix}/{path}"
             object_id = urllib.parse.quote(object_id, safe='')
         
         try:
-            # Get issue details before deletion for confirmation message
-            issue_info = {}
+            # Get object details before deletion for confirmation message
+            object_info = {}
             try:
-                issue_data = await self.client.get_content(object_id)
-                if issue_data:
-                    issue_info = {
-                        "Name": issue_data.get("name", "Unknown"),
-                        "Resource ID": issue_data.get("id", object_id)
+                object_data = await self.client.get_content(object_id)
+                if object_data:
+                    object_info = {
+                        "Name": object_data.get("name", "Unknown"),
+                        "Resource ID": object_data.get("id", object_id)
                     }
             except Exception as e:
-                logger.warning(f"Could not retrieve issue details before deletion: {e}")
+                logger.warning(f"Could not retrieve {self.display_name.lower()} details before deletion: {e}")
                 # Continue with deletion even if we couldn't get details
             
-            # Delete the issue
-            logger.info(f"Deleting issue with ID: {object_id}")
+            # Delete the object
+            logger.info(f"Deleting {self.display_name.lower()} with ID: {object_id}")
             result = await self.client.delete_content(object_id)
             
             # Create response text
-            response_text = f"Successfully deleted issue:\n\n"
-            
-            if issue_info:
-                response_text += f"- **Name**: {issue_info.get('Name', 'Unknown')}\n"
-                response_text += f"- **Resource ID**: {issue_info.get('Resource ID', object_id)}\n"
+            if object_info:
+                response_items = object_info
             else:
-                response_text += f"- **Resource ID**: {object_id}\n"
+                response_items = {"Resource ID": object_id}
+                
+            response_text = self.create_response_text(f"Successfully deleted {self.display_name.lower()}:", response_items)
             
             return [TextContent(type="text", text=response_text)]
         
         except Exception as e:
-            logger.error(f"Error deleting issue: {e}")
-            return [TextContent(type="text", text=f"Error deleting issue: {str(e)}")]
+            logger.error(f"Error deleting {self.display_name.lower()}: {e}")
+            return [TextContent(type="text", text=f"Error deleting {self.display_name.lower()}: {str(e)}")]
+
+# Made with Bob

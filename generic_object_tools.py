@@ -326,13 +326,16 @@ class GenericObjectTools(BaseTool):
             # Old format: list of field names with single sort_order
             sort_order = arguments.get('sort_order', 'ASC')
             sort_fields = [{'field': field, 'order': sort_order} for field in sort_by]
-        else:
+        elif isinstance(sort_by, list):
             # New format: list of objects with field and order
             sort_fields = sort_by
+        else:
+            # Default to sorting by Name if sort_by is None or invalid
+            sort_fields = [{'field': 'Name', 'order': 'ASC'}]
             
         # Limit to first 3 fields
-        sort_fields = sort_fields[:3]
-        additional_fields = arguments.get('fields', [])
+        sort_fields = sort_fields[:3] if sort_fields else [{'field': 'Name', 'order': 'ASC'}]
+        additional_fields = arguments.get('fields') or []
         
         # Always include these required fields
         required_fields = ['[Resource ID]', '[Name]', '[Description]']

@@ -107,7 +107,7 @@ Example for adding a new "Action" object type:
 
 1. Clone this repository:
    ```
-   git clone [<repository-url>](https://github.ibm.com/OpenPages/grc-mcp-server-beta)
+   git clone https://github.ibm.com/OpenPages/grc-mcp-server-beta
    cd grc-mcp-server-beta
    ```
 

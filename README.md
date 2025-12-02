@@ -99,7 +99,7 @@ Example for adding a new "Action" object type:
 
 ## Prerequisites
 
-- Python 3.8+
+- Python 3.11+
 - Access to an IBM OpenPages instance
 - Authentication credentials (username/password or API key)
 
@@ -111,12 +111,26 @@ Example for adding a new "Action" object type:
    cd grc-mcp-server-beta
    ```
 
-2. Install dependencies:
+2. Create and activate a Python virtual environment (recommended best practice):
+   
+   **On macOS/Linux:**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+   
+   **On Windows:**
+   ```bash
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+3. Install dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-3. Configure environment variables:
+4. Configure environment variables:
    ```
    cp .env.example .env
    ```
@@ -129,6 +143,8 @@ The following environment variables can be configured in the `.env` file:
 ### OpenPages Configuration
 - `OPENPAGES_BASE_URL`: URL of your OpenPages instance
 - `OPENPAGES_AUTHENTICATION_TYPE`: Authentication type (`basic` or `bearer`)
+  - Use `basic` for on-premises installations
+  - Use `bearer` for SaaS IBM Cloud hybrid deployments
 - `OPENPAGES_USERNAME`: Username for basic authentication
 - `OPENPAGES_PASSWORD`: Password for basic authentication
 - `OPENPAGES_APIKEY`: API key for bearer authentication
@@ -137,6 +153,8 @@ The following environment variables can be configured in the `.env` file:
 ### Server Configuration
 - `DEBUG`: Enable debug mode (`True` or `False`)
 - `SSL_VERIFY`: Enable SSL verification (`True` or `False`)
+  - Set to `True` for SaaS deployments (recommended for production)
+  - Set to `False` for on-premises local Fyre-based Docker installations
 - `LOG_LEVEL`: Logging level (`INFO`, `DEBUG`, `WARNING`, `ERROR`)
 - `PORT`: Server port (default: 8000)
 - `HOST`: Server host (default: 0.0.0.0)
@@ -165,12 +183,21 @@ You can test the MCP server locally using one of the following methods:
 
 You can send JSON-RPC requests directly to the server and receive responses:
 
-Example: List tools JSON-RPC request
-```
-{"method":"tools/list","params":{"_meta":{"progressToken":1}},"jsonrpc":"2.0","id":1}
-```
+1. Start the MCP server:
+   ```bash
+   python start_mcp.py
+   ```
 
-The response will contain the tools definitions.
+2. In the same terminal, send JSON-RPC requests. For example, to list available tools:
+   ```json
+   {"method":"tools/list","params":{"_meta":{"progressToken":1}},"jsonrpc":"2.0","id":1}
+   ```
+
+3. Press Enter to send the request. The server will respond with the tools definitions.
+
+4. You can test other JSON-RPC methods such as:
+   - List tools: `{"method":"tools/list","params":{"_meta":{"progressToken":1}},"jsonrpc":"2.0","id":1}`
+   - Call a tool: `{"method":"tools/call","params":{"name":"tool_name","arguments":{}},"jsonrpc":"2.0","id":2}`
 
 #### 2. Using MCP Inspector UI
 
@@ -519,3 +546,4 @@ This roadmap represents our commitment to making OpenPages data and functionalit
 ## License
 
 [Specify license information]
+

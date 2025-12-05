@@ -532,7 +532,6 @@ The current beta version of the OpenPages MCP Server is implemented as a local s
 - Integration with watsonx.orchestrate and other MCP-compatible agents
 
 ### Short-term Enhancements
-- **Expanded Entity Support**: Add CRUD operations for additional OpenPages entities such as Risks, Actions, and Assessments
 - **Enhanced Query Capabilities**: Improve filtering, sorting, and relationship traversal in query tools
 - **Use-Case Level Tools**: Develop higher-level tools that encapsulate common business processes and workflows
 

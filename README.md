@@ -312,12 +312,12 @@ Based on the default `object_types.json` configuration, the following tools are 
 4. Load the MCP tools into your watsonx orchestrate instance using the following command (replace placeholders with your values):
    ```
    orchestrate toolkits add \
-     --kind mcp \
-     --name "YourOpenPagesToolsName" \
-     --description "MCP tools for OpenPages integration" \
-     --package-root "Base Folder of the OpenPages MCP Server code" \
-     --command '["python3", "start_mcp.py"]' \
-     --tools "*"
+    --kind mcp \
+    --name "Name of the server" \
+    --description "MCP tools for OpenPages integration" \
+    --package-root "Base folder of the code" \
+    --command "python start_mcp.py" \
+    --tools "*"
    ```
 
 5. Enter the APIKey when prompted, and the tools will be loaded to the watsonx orchestrate instance. 

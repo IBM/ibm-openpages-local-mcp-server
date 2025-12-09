@@ -311,7 +311,7 @@ Based on the default `object_types.json` configuration, the following tools are 
 
 4. Load the MCP tools into your watsonx orchestrate instance using the following command (replace placeholders with your values):
    ```
-   orchestrate toolkits import \
+   orchestrate toolkits add \
      --kind mcp \
      --name "YourOpenPagesToolsName" \
      --description "MCP tools for OpenPages integration" \

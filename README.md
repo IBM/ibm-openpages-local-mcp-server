@@ -8,7 +8,7 @@ This project provides a local server that implements the Model Context Protocol 
 
 ### Architecture
 
-<img width="1172" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/7bd172b0-282d-4792-bc81-ef971c11bc95">
+![OpenPages MCP Server Architecture](docs/architecture.png)
 
 The OpenPages MCP Server is designed to run locally alongside AI agents and communicates with them via Standard Input/Output (STDIO). This architecture offers several advantages:
 
@@ -107,8 +107,8 @@ Example for adding a new "Action" object type:
 
 1. Clone this repository:
    ```
-   git clone https://github.ibm.com/OpenPages/grc-mcp-server-beta
-   cd grc-mcp-server-beta
+   git clone https://github.com/IBM/ibm-openpages-local-mcp-server
+   cd ibm-openpages-local-mcp-server
    ```
 
 2. Create and activate a Python virtual environment (recommended best practice):
@@ -144,11 +144,15 @@ The following environment variables can be configured in the `.env` file:
 - `OPENPAGES_BASE_URL`: URL of your OpenPages instance
 - `OPENPAGES_AUTHENTICATION_TYPE`: Authentication type (`basic` or `bearer`)
   - Use `basic` for on-premises installations
-  - Use `bearer` for SaaS IBM Cloud hybrid deployments
+  - Use `bearer` for SaaS deployments (IBM Cloud or MCSP)
 - `OPENPAGES_USERNAME`: Username for basic authentication
 - `OPENPAGES_PASSWORD`: Password for basic authentication
 - `OPENPAGES_APIKEY`: API key for bearer authentication
+  - For IBM Cloud: Standard IBM Cloud API key
+  - For MCSP: Base64-encoded client_id:client_secret
 - `OPENPAGES_AUTHENTICATION_URL`: Authentication URL for bearer authentication
+  - For IBM Cloud: `https://iam.cloud.ibm.com/identity/token` (production) or `https://iam.test.cloud.ibm.com/identity/token` (test)
+  - For MCSP: `https://account-iam.platform.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token` (production) or `https://account-iam.platform.test.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token` (test)
 
 ### Server Configuration
 - `DEBUG`: Enable debug mode (`True` or `False`)
@@ -214,22 +218,12 @@ For a more user-friendly testing experience, you can use the MCP Inspector UI (r
    - **Arguments**: start_mcp.py
 
 3. Click on "Connect", and the MCP Inspector will start the MCP server and connect to it via STDIO.
-   
-   <img width="1496" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/caf3e170-a7b7-4401-b64a-2d1290faf0c4">
-
 
 4. Go to the "Tools" tab and click on "List Tools" to see all available tools.
-   
-   <img width="1418" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/2a8b50c1-3ef6-4e5e-9127-f5bdb157b3a2">
 
+5. Click on any tool, fill in the required fields, and click on "Run Tool" to test the tool.
 
-5. Click on any tool, fill in the required fields, and click on "Run Tool" to test the tool
-   
-   <img width="1503" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/78cea5dc-6357-4bab-a586-c8a2d60417ba">
-
-6. The tool runs and result is fetched
-   
-   <img width="1505" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/129a0ea4-8db5-41ed-b51a-44e6e87ad441">
+6. The tool runs and result is fetched.
 
 
 
@@ -284,14 +278,14 @@ Based on the default `object_types.json` configuration, the following tools are 
 1. OpenPages SaaS instance and an APIKey with OpenPages access
 2. IBM watsonX orchestrate instance and an APIKey with watsonx orchestrate access
 3. A running local environment of watsonx Agent Development Kit (ADK) - Check out the [getting started with ADK tutorial](https://developer.ibm.com/tutorials/getting-started-with-watsonx-orchestrate/) if you don't have an active instance
-4. Read Access to OpenPages MCP Server repo - https://github.ibm.com/OpenPages/grc-mcp-server-beta
+4. Read Access to OpenPages MCP Server repo - https://github.com/IBM/ibm-openpages-local-mcp-server
 
 ### Steps to Import MCP Tools to watsonX orchestrate
 
 1. Checkout the OpenPages MCP Server code to your local machine:
    ```
-   git clone https://github.ibm.com/OpenPages/grc-mcp-server-beta
-   cd grc-mcp-server-beta
+   git clone https://github.com/IBM/ibm-openpages-local-mcp-server
+   cd ibm-openpages-local-mcp-server
    ```
 
 2. Create a `.env` file in the base folder by copying the content from `.env.example`:
@@ -304,8 +298,16 @@ Based on the default `object_types.json` configuration, the following tools are 
    # OpenPages Configuration
    OPENPAGES_BASE_URL=<Valid OpenPages SaaS URL>
    OPENPAGES_APIKEY=<APIKey with access to openpages instance>
-   OPENPAGES_AUTHENTICATION_URL=<Auth URL of the OpenPages instance, e.g., https://iam.test.cloud.ibm.com/identity/token for IBM cloud test>
    OPENPAGES_AUTHENTICATION_TYPE=bearer
+   
+   # For IBM Cloud:
+   OPENPAGES_AUTHENTICATION_URL=https://iam.cloud.ibm.com/identity/token
+   # Or for IBM Cloud test: https://iam.test.cloud.ibm.com/identity/token
+   
+   # For MCSP:
+   # OPENPAGES_AUTHENTICATION_URL=https://account-iam.platform.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token
+   # Or for MCSP test: https://account-iam.platform.test.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token
+   
    # Keep other configs as-is
    ```
 
@@ -503,7 +505,7 @@ Delete the risk with id 14045
 
 ### OpenPages Local MCP - WatsonX Orchestrate High Level Architecture - User Flow
 
-<img width="1188" alt="image" src="https://github.ibm.com/OpenPages/grc-mcp-server-beta/assets/482626/57d57f3a-80a7-4ddf-9ba4-f053adc1ad6c">
+![OpenPages MCP - WatsonX Orchestrate Flow](docs/watsonx-flow.png)
 
 
 
@@ -544,5 +546,15 @@ This roadmap represents our commitment to making OpenPages data and functionalit
 
 ## License
 
-[Specify license information]
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For issues and questions, please use the [GitHub Issues](https://github.com/IBM/ibm-openpages-local-mcp-server/issues) page.
+
+## Acknowledgments
+
+- Built with the [Model Context Protocol](https://modelcontextprotocol.io/)
+- Integrates with IBM OpenPages GRC platform
+- Compatible with IBM watsonx.orchestrate and other MCP-compatible AI agents
 

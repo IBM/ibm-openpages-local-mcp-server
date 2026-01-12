@@ -116,26 +116,96 @@ class OpenPagesClient:
     
     async def fetch_token(self, api_key: str, authentication_url: str) -> Optional[str]:
         """
-        Fetch authentication token from IBM Cloud IAM service.
+        Fetch authentication token from IBM Cloud IAM or MCSP service.
+        
+        Supports two authentication methods:
+        1. IBM Cloud IAM (iam.cloud.ibm.com or iam.test.cloud.ibm.com)
+        2. MCSP (Multi-Cloud Service Platform) (account-iam.platform.*.saas.ibm.com)
         
         Args:
             api_key (str): The API key to use for authentication
+                          - For IBM Cloud: Standard API key
+                          - For MCSP: Base64-encoded string (already encoded)
             authentication_url (str): The URL to use for authentication
 
         Returns:
             Optional[str]: The access token if successful, None otherwise
         """
         
-        headers = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json'
-        }
+        # Detect authentication type based on URL
+        is_mcsp = 'account-iam.platform' in authentication_url or 'saas.ibm.com' in authentication_url
+        is_ibm_cloud = 'iam.cloud.ibm.com' in authentication_url or 'iam.test.cloud.ibm.com' in authentication_url
         
-        data = {
-            'grant_type': 'urn:ibm:params:oauth:grant-type:apikey',
-            'apikey': api_key
-        }
+        if is_mcsp:
+            logger.info("Detected MCSP authentication endpoint")
+            # MCSP uses POST with JSON body containing the apikey
+            # The apikey is already base64 encoded in the .env file
+            headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+            
+            # MCSP expects JSON body with apikey field
+            data = {
+                'apikey': api_key
+            }
+            
+            try:
+                async with httpx.AsyncClient(verify=True) as client:
+                    logger.info(f"Fetching token from {authentication_url}")
+                    response = await client.post(authentication_url, headers=headers, json=data, timeout=30.0)
+                    response.raise_for_status()
+                    
+                    token_data = response.json()
+                    
+                    # MCSP returns 'token' field instead of 'access_token'
+                    if 'token' in token_data:
+                        logger.info("Successfully obtained MCSP access token")
+                        return token_data['token']
+                    elif 'access_token' in token_data:
+                        logger.info("Successfully obtained MCSP access token")
+                        return token_data['access_token']
+                    else:
+                        logger.error("Error: 'token' or 'access_token' not found in MCSP response")
+                        logger.error(f"Response: {token_data}")
+                        return None
+                        
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Error fetching MCSP token: {e}")
+                logger.error(f"Response status: {e.response.status_code}")
+                logger.error(f"Response body: {e.response.text}")
+                return None
+            except httpx.RequestError as e:
+                logger.error(f"Request error fetching MCSP token: {e}")
+                return None
+                
+        elif is_ibm_cloud:
+            logger.info("Detected IBM Cloud IAM authentication endpoint")
+            # IBM Cloud IAM uses form data with apikey
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            }
+            
+            data = {
+                'grant_type': 'urn:ibm:params:oauth:grant-type:apikey',
+                'apikey': api_key
+            }
+        else:
+            logger.warning(f"Unknown authentication endpoint type: {authentication_url}")
+            logger.info("Attempting IBM Cloud IAM authentication format as default")
+            # Default to IBM Cloud IAM format
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json'
+            }
+            
+            data = {
+                'grant_type': 'urn:ibm:params:oauth:grant-type:apikey',
+                'apikey': api_key
+            }
         
+        # IBM Cloud IAM authentication
         try:
             async with httpx.AsyncClient(verify=True) as client:
                 logger.info(f"Fetching token from {authentication_url}")

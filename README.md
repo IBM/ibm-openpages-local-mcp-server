@@ -151,8 +151,8 @@ The following environment variables can be configured in the `.env` file:
   - For IBM Cloud: Standard IBM Cloud API key
   - For MCSP: Base64-encoded client_id:client_secret
 - `OPENPAGES_AUTHENTICATION_URL`: Authentication URL for bearer authentication
-  - For IBM Cloud: `https://iam.cloud.ibm.com/identity/token` (production) or `https://iam.test.cloud.ibm.com/identity/token` (test)
-  - For MCSP: `https://account-iam.platform.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token` (production) or `https://account-iam.platform.test.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token` (test)
+  - For IBM Cloud: `https://iam.cloud.ibm.com/identity/token` 
+  - For MCSP: `https://account-iam.platform.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token`
 
 ### Server Configuration
 - `DEBUG`: Enable debug mode (`True` or `False`)
@@ -302,11 +302,9 @@ Based on the default `object_types.json` configuration, the following tools are 
    
    # For IBM Cloud:
    OPENPAGES_AUTHENTICATION_URL=https://iam.cloud.ibm.com/identity/token
-   # Or for IBM Cloud test: https://iam.test.cloud.ibm.com/identity/token
    
    # For MCSP:
    # OPENPAGES_AUTHENTICATION_URL=https://account-iam.platform.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token
-   # Or for MCSP test: https://account-iam.platform.test.saas.ibm.com/api/2.0/services/{service_id}/apikeys/token
    
    # Keep other configs as-is
    ```

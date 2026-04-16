@@ -1,3 +1,5 @@
+# *** A new version of OpenPages Model Context Protocol (MCP) server is released : https://github.ibm.com/OpenPages/grc-mcp-server. This page will be sunset as on July 22 2026. ***
+
 # OpenPages Local MCP Server
 
 A local Model Context Protocol (MCP) server that enables AI agents to securely interact with IBM OpenPages GRC platform through a standardized interface.

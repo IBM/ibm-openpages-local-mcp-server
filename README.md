@@ -1,4 +1,4 @@
-# *** A new version of OpenPages Model Context Protocol (MCP) server is released : https://github.ibm.com/OpenPages/grc-mcp-server. This page will be sunset as on July 22 2026. ***
+# *** A new version of OpenPages Model Context Protocol (MCP) server is released : https://github.com/IBM/ibm-openpages-mcp-server). This page will be sunset as on July 22 2026. ***
 
 # OpenPages Local MCP Server
 
